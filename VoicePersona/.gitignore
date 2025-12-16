@@ -1,0 +1,14 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+/cosyvoice/cli/__pycache__
+/cosyvoice/dataset/__pycache__
+/cosyvoice/flow/__pycache__
+/cosyvoice/hifigan/__pycache__
+/cosyvoice/llm/__pycache__
+/cosyvoice/tokenizer/__pycache__
+/cosyvoice/transformer/__pycache__
+/cosyvoice/utils/__pycache__
+/cosyvoice/__pycache__
+/VoicePersona/.vs

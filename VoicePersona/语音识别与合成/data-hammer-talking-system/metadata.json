@@ -1,7 +1,0 @@
-{
-  "name": "Data Hammer Talking System",
-  "description": "A real-time human-computer interaction system interface using Gemini Live API.",
-  "requestFramePermissions": [
-    "microphone"
-  ]
-}

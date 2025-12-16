@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <meta charset="UTF-8">
+    <title>视频生成界面</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style_app.css') }}">
+</head>
+
+<body>
+    <div class="main-content">
+        <div class="left-preview">
+            <!-- 音频预览盒子（在视频盒子上方） -->
+            <div class="audio-box" style="margin-bottom: 12px;">
+                <audio id="previewAudio" class="preview-audio" controls autoplay style="width:100%;"></audio>
+            </div>
+            <div class="video-box">
+                <video id="previewVideo" class="preview-video" controls autoplay muted loop style="width:100%; height:auto; background:#000;"></video>
+            </div>
+        </div>
+
+        <div class="right-form">
+            <form method="POST">
+                <div class="form-group">
+                    <label>模型名称</label>
+                    <select>
+                        <option>VoicePersona</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>模型权重路径</label>
+                    <input type="text" value="/SyncTalk/model/source_ep10">
+                </div>
+
+                <div class="form-group">
+                    <label>参考音频地址</label>
+                    <input type="text" value="/static/input.wav">
+                </div>
+
+                <div class="form-group">
+                    <label>GPU选择</label>
+                    <select name="gpu">
+                        <option>GPU 0</option>
+                        <option>GPU 1</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>语音克隆模型名称</label>
+                    <input type="text" value="Cosy Voice">
+                </div>
+
+                <div class="form-group">
+                    <label>目标文字 (文本框)</label>
+                    <input type="text" id="inputText" placeholder="请输入目标文本内容...">
+                </div>
+
+                <!-- 音频生成与预览相关控件 -->
+                <div class="form-group">
+                    <label>输出音频地址</label>
+                    <input type="text" id="outputWavePath" placeholder="例如：../output/YYMMDD_HHMMSS_output.wav">
+                </div>
+                <div style="margin-top: 8px;">
+                    <button type="button" id="generateAudioBtn" class="submit-btn">生成音频</button>
+                </div>
+
+                <!-- 视频预览和下一步用到的控件（与音频分离） -->
+                <div class="form-group" style="margin-top: 16px;">
+                    <label>输出视频地址</label>
+                    <input type="text" id="outputVideoPath" value="{{ url_for('static', filename='videos/Trump.mp4') }}" placeholder="例如：/static/videos/output.mp4">
+                </div>
+                <div style="margin-top: 8px;">
+                    <button type="submit" id="generateBtn" class="submit-btn">生成视频</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            const audio = document.getElementById('previewAudio');
+            const video = document.getElementById('previewVideo');
+            const outputWaveInput = document.getElementById('outputWavePath');
+            const outputVideoInput = document.getElementById('outputVideoPath');
+            const generateAudioBtn = document.getElementById('generateAudioBtn');
+            const generateBtn = document.getElementById('generateBtn');
+            const inputTextEl = document.getElementById('inputText');
+
+            function setAudioSrc(src) {
+                if (!src) return;
+                audio.src = src;
+                audio.load();
+                const playPromise = audio.play();
+                if (playPromise && typeof playPromise.then === 'function') {
+                    playPromise.catch(() => {/* user gesture may be required */});
+                }
+            }
+
+            function setVideoSrc(src) {
+                if (!src) return;
+                video.src = src;
+                video.load();
+                const playPromise = video.play();
+                if (playPromise && typeof playPromise.then === 'function') {
+                    playPromise.catch(() => {/* ignore autoplay restrictions */});
+                }
+            }
+
+            // Initialize default preview media
+            setVideoSrc(outputVideoInput.value);
+            // Optional: if you want a default audio, set it here (left empty by default)
+            if (outputWaveInput.value) {
+                setAudioSrc(outputWaveInput.value);
+            }
+
+            // Manual change handlers
+            outputVideoInput.addEventListener('change', function() {
+                setVideoSrc(this.value);
+            });
+            outputWaveInput.addEventListener('change', function() {
+                setAudioSrc(this.value);
+            });
+
+            // Generate Audio button handler
+            generateAudioBtn.addEventListener('click', function() {
+                const inputText = (inputTextEl.value || '').trim();
+                if (!inputText) {
+                    alert('请输入要合成的文本');
+                    return;
+                }
+                // Call backend to generate audio via TTS
+                fetch('{{ url_for('generate') }}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({ input_text: inputText })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data && data.status === 'success' && data.output_path) {
+                        // Update audio preview and text box with generated path
+                        outputWaveInput.value = data.output_path;
+                        setAudioSrc(data.output_path);
+                    } else {
+                        alert(data && data.message ? data.message : '音频生成失败');
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert('音频生成失败');
+                });
+            });
+
+            // Generate Video button: only reload the video from its path for now
+            generateBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                setVideoSrc(outputVideoInput.value);
+            });
+        })();
+    </script>
+</body>
+
+</html>
