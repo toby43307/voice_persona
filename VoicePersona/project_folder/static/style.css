@@ -1,0 +1,186 @@
+/* static/style.css */
+body {
+    background-color: #000000;
+    /* 纯黑背景 */
+    color: #fff;
+    font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+    /* 更贴近Windows系统字体 */
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    /* 改为纵向布局以放置底部文字 */
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* 主容器 */
+.container {
+    text-align: center;
+    width: 100%;
+    max-width: 1200px;
+    z-index: 1;
+}
+
+/* 标题样式 - 完美复刻 */
+h1.main-title {
+    font-size: 3.5rem;
+    line-height: 1.2;
+    color: #00f3ff;
+    /* 视频中的冰蓝色 */
+    text-shadow:
+        0 0 10px rgba(0, 243, 255, 0.8),
+        0 0 20px rgba(0, 243, 255, 0.5),
+        0 0 40px rgba(0, 119, 255, 0.3);
+    margin-bottom: 60px;
+    font-weight: 900;
+    /* 特粗字体 */
+    letter-spacing: 3px;
+    text-transform: uppercase;
+}
+
+/* 按钮容器 */
+.menu-buttons {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 25px;
+    /* 按钮间距 */
+}
+
+/* 首页大按钮 - 完美复刻 */
+.tech-btn {
+    background: linear-gradient(180deg, #00b7ff 0%, #0066cc 100%);
+    /* 蓝宝石渐变 */
+    border: 2px solid #00f3ff;
+    /* 亮青色边框 */
+    border-radius: 8px;
+    /* 圆角弧度调整 */
+    color: white;
+    font-size: 1.3rem;
+    font-weight: bold;
+    padding: 18px 0;
+    /* 高度调整 */
+    width: 320px;
+    /* 宽度调整 */
+    cursor: pointer;
+    box-shadow: 0 0 15px rgba(0, 243, 255, 0.4);
+    /* 默认微光 */
+    transition: all 0.2s ease;
+    text-decoration: none;
+    letter-spacing: 2px;
+}
+
+.tech-btn:hover {
+    transform: scale(1.02);
+    box-shadow: 0 0 30px rgba(0, 243, 255, 0.9);
+    /* 悬停强光 */
+    filter: brightness(1.2);
+}
+
+/* 底部版权小字 - 新增 */
+.footer-text {
+    position: fixed;
+    bottom: 20px;
+    color: #333333;
+    /* 极暗的灰色 */
+    font-size: 0.8rem;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+/* --- 内页通用布局 --- */
+.page-layout {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    padding: 0 50px;
+    width: 90%;
+    max-width: 1400px;
+    margin: 0 auto;
+    align-items: flex-start;
+}
+
+/* 左侧视频框 - 纯黑带微弱边框 */
+.left-panel {
+    flex: 1.2;
+    background: #000;
+    border: 1px solid #222;
+    aspect-ratio: 16/9;
+    /* 强制16:9比例 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+}
+
+.right-panel {
+    flex: 0.8;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    background: transparent;
+    /* 去掉背景色，直接显示在黑底上 */
+}
+
+/* 表单文字标签 */
+label {
+    color: #888;
+    /* 浅灰色文字 */
+    font-size: 0.85rem;
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 600;
+}
+
+/* 输入框和下拉菜单 */
+input,
+select {
+    width: 100%;
+    padding: 10px 12px;
+    background: #111;
+    /* 极深灰背景 */
+    border: 1px solid #333;
+    /* 暗淡边框 */
+    color: #ddd;
+    border-radius: 4px;
+    box-sizing: border-box;
+    font-size: 0.9rem;
+    font-family: inherit;
+}
+
+/* 输入框聚焦效果 */
+input:focus,
+select:focus {
+    border-color: #00f3ff;
+    box-shadow: 0 0 8px rgba(0, 243, 255, 0.3);
+    outline: none;
+}
+
+/* 功能按钮 (Training/生成) */
+.action-btn {
+    background: #0088ff;
+    background: linear-gradient(180deg, #00aaff 0%, #0066cc 100%);
+    color: white;
+    border: none;
+    padding: 12px;
+    margin-top: 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    width: 100%;
+    font-size: 1rem;
+    transition: filter 0.2s;
+}
+
+.action-btn:hover {
+    filter: brightness(1.2);
+}
+
+/* 停止对话按钮 (红色) */
+.stop-btn {
+    background: linear-gradient(180deg, #ff4d4d 0%, #cc0000 100%);
+}

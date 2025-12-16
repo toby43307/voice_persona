@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <meta charset="UTF-8">
+    <title>模型训练界面</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style_app.css') }}">
+</head>
+
+<body>
+    <div class="main-content">
+        <div class="left-preview">
+            <div class="video-box">
+            </div>
+        </div>
+
+        <div class="right-form">
+            <form method="POST">
+                <div class="form-group">
+                    <label>模型名称</label>
+                    <select name="model_name">
+                        <option>SyncTalk</option>
+                        <option>Model A</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>参考视频地址</label>
+                    <input type="text" name="video_path" value="/static/videos/source.mp4">
+                </div>
+
+                <div class="form-group">
+                    <label>GPU选择</label>
+                    <select name="gpu">
+                        <option>GPU 0</option>
+                        <option>GPU 1</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Epoch (训练轮数)</label>
+                    <input type="number" name="epoch" value="10">
+                </div>
+
+                <div class="form-group">
+                    <label>自定义训练参数</label>
+                    <input type="text" placeholder="请输入自定义参数...">
+                </div>
+
+                <div style="margin-top: 20px;">
+                    <button type="submit" class="submit-btn">Training!</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+
+</html>

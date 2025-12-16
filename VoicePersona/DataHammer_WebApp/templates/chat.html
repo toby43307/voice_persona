@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <meta charset="UTF-8">
+    <title>实时对话系统</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style_app.css') }}">
+</head>
+
+<body>
+    <div class="main-content">
+        <div class="left-preview">
+            <div class="video-box">
+                <span style="color:white;">▶</span>
+            </div>
+        </div>
+
+        <div class="right-form">
+            <h2>实时对话系统</h2>
+
+            <div class="form-group">
+                <label>模型名称</label>
+                <select>
+                    <option>SyncTalk</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>模型权重路径</label>
+                <input type="text" value="/SyncTalk/model/source_ep10">
+            </div>
+
+            <div class="form-group">
+                <label>对话 API 选择</label>
+                <select>
+                    <option>OpenAI API</option>
+                </select>
+            </div>
+
+            <div style="height: 50px;"></div> <button class="submit-btn stop-btn">● 停止对话</button>
+        </div>
+    </div>
+</body>
+
+</html>

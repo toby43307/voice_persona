@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <meta charset="UTF-8">
+    <title>视频生成界面</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style_app.css') }}">
+</head>
+
+<body>
+    <div class="main-content">
+        <div class="left-preview">
+            <div class="video-box">
+            </div>
+        </div>
+
+        <div class="right-form">
+            <form method="POST">
+                <div class="form-group">
+                    <label>模型名称</label>
+                    <select>
+                        <option>SyncTalk</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>模型权重路径</label>
+                    <input type="text" value="/SyncTalk/model/source_ep10">
+                </div>
+
+                <div class="form-group">
+                    <label>参考音频地址</label>
+                    <input type="text" value="/static/input.wav">
+                </div>
+
+                <div class="form-group">
+                    <label>GPU选择</label>
+                    <select name="gpu">
+                        <option>GPU 0</option>
+                        <option>GPU 1</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>语音克隆模型名称</label>
+                    <input type="text" value="Voice Clone A">
+                </div>
+
+                <div class="form-group">
+                    <label>目标文字 (文本框)</label>
+                    <input type="text" placeholder="请输入目标文本内容...">
+                </div>
+
+                <div style="margin-top: 20px;">
+                    <button type="submit" class="submit-btn">生成视频</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+
+</html>

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>模型训练界面</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="form-container">
+        <h2>模型训练界面</h2>
+        <div class="content-wrapper">
+            <div class="video-placeholder">
+                 <video id="videoPreview" width="320" height="240" controls style="background-color: #000;"></video>
+            </div>
+            <form action="/train" method="post" id="trainingForm">
+                <label for="model_name">模型名称</label>
+                <select id="model_name" name="model_name">
+                    <option value="Model A">Model A</option>
+                    <option value="SyncTalk" selected>SyncTalk</option>
+                </select>
+
+                <label for="video_path">参考视频地址</label>
+                <input type="text" id="video_path" name="video_path" placeholder="请输入参考视频路径" onchange="updateVideoSource()">
+
+                <label for="gpu">GPU选择</label>
+                <select id="gpu" name="gpu">
+                    <option value="GPU 0">GPU 0</option>
+                    <option value="GPU 1">GPU 1</option>
+                </select>
+
+                <label for="epoch">Epoch (训练轮数)</label>
+                <input type="number" id="epoch" name="epoch" value="10">
+
+                <label for="custom_params">自定义训练参数</label>
+                <input type="text" id="custom_params" name="custom_params" placeholder="请输入自定义参数...">
+
+                <button type="submit" class="submit-button">Training!</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function updateVideoSource() {
+            var videoPlayer = document.getElementById('videoPreview');
+            // 为了演示，它固定加载 static/videos/source.mp4
+            videoPlayer.src = "{{ url_for('static', filename='videos/source.mp4') }}";
+            videoPlayer.load();
+        }
+    </script>
+</body>
+</html>
