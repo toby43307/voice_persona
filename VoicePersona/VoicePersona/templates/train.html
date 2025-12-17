@@ -8,9 +8,15 @@
 </head>
 
 <body>
-    <div class="main-content">
+    <div class="main-content" style="position:relative;min-height:600px;">
         <div class="left-preview">
+            <div class="audio-box" style="margin-bottom: 12px;">
+                <audio id="previewAudio" class="preview-audio" controls autoplay style="width:100%;"></audio>
+            </div>
             <div class="video-box">
+                <video id="previewVideo" class="preview-video" controls autoplay muted loop style="width:100%; height:auto; background:#000;"
+                    src="{{ request.form.get('video_path', 'static/videos/Trump.mp4') }}">
+                </video>
             </div>
         </div>
 
@@ -26,7 +32,7 @@
 
                 <div class="form-group">
                     <label>参考视频地址</label>
-                    <input type="text" name="video_path" value="/static/videos/source.mp4">
+                    <input type="text" name="video_path" value="static/videos/Trump.mp4">
                 </div>
 
                 <div class="form-group">
@@ -54,5 +60,23 @@
         </div>
     </div>
 </body>
+</body>
+<script>
+    // 自动预览视频（如果表单有新输入则更新）
+    (function() {
+        const videoInput = document.querySelector('input[name="video_path"]');
+        const video = document.getElementById('previewVideo');
+        if (videoInput && video) {
+            videoInput.addEventListener('change', function() {
+                video.src = this.value;
+                video.load();
+                const playPromise = video.play();
+                if (playPromise && typeof playPromise.then === 'function') {
+                    playPromise.catch(() => {/* ignore autoplay restrictions */});
+                }
+            });
+        }
+    })();
+</script>
 
 </html>
