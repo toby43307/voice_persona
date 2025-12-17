@@ -8,38 +8,222 @@
 </head>
 
 <body>
-    <div class="main-content">
+    <div class="main-content" style="position:relative;min-height:600px;">
         <div class="left-preview">
+            <!-- 音频预览盒子（在视频盒子上方） -->
+            <div class="audio-box" style="margin-bottom: 12px;">
+                <audio id="previewAudio" class="preview-audio" controls autoplay style="width:100%;"></audio>
+            </div>
             <div class="video-box">
-                <span style="color:white;">▶</span>
+                <video id="previewVideo" class="preview-video" controls autoplay muted loop style="width:100%; height:auto; background:#000;"></video>
             </div>
         </div>
 
         <div class="right-form">
-            <h2>实时对话系统</h2>
+            <form method="POST">
+                <div class="form-group">
+                    <label>模型名称</label>
+                    <select>
+                        <option>VoicePersona</option>
+                    </select>
+                </div>
 
-            <div class="form-group">
-                <label>模型名称</label>
-                <select>
-                    <option>SyncTalk</option>
-                </select>
+                <div class="form-group">
+                    <label>模型权重路径</label>
+                    <input type="text" value="/SyncTalk/model/source_ep10">
+                </div>
+
+                <div class="form-group">
+                    <label>参考音频地址</label>
+                    <input type="text" value="/static/input.wav">
+                </div>
+
+                <div class="form-group">
+                    <label>语音克隆模型名称</label>
+                    <input type="text" value="Cosy Voice">
+                </div>
+
+                <div class="form-group">
+                    <label>目标文字 (文本框)</label>
+                    <input type="text" id="inputText" placeholder="请输入目标文本内容...">
+                </div>
+
+                <!-- 音频生成与预览相关控件 -->
+                <div class="form-group">
+                    <label>输出音频地址</label>
+                    <input type="text" id="outputWavePath" placeholder="例如：../output/YYMMDD_HHMMSS_output.wav">
+                </div>
+                <div style="margin-top: 8px;">
+                    <button type="button" id="generateAudioBtn" class="submit-btn">生成音频</button>
+                </div>
+
+                <!-- 视频预览和下一步用到的控件（与音频分离） -->
+                <div class="form-group" style="margin-top: 16px;">
+                    <label>输出视频地址</label>
+                    <input type="text" id="outputVideoPath" value="{{ url_for('static', filename='videos/Trump.mp4') }}" placeholder="例如：/static/videos/output.mp4">
+                </div>
+                <div style="margin-top: 8px;">
+                    <button type="submit" id="generateBtn" class="submit-btn">生成视频</button>
+                </div>
+                
+                <div class="chat-section" style="margin-top: 16px;">
+                    <label>对话</label>
+                    <input type="text" id="chatInput" placeholder="请输入您的消息..." style="flex:1;padding:8px;border-radius:4px;border:1px solid #ccc;">
+                    <button type="button" id="sendChatBtn" class="submit-btn" style="height:38px;min-width:80px;">发送</button>
+                </div>
+
+                <div id="chatMessages" style="
+                    margin-top: 12px;
+                    height: 200px;
+                    overflow-y: auto;
+                    border: 1px solid #ccc;
+                    padding: 10px;
+                    background: #f9f9f9;
+                    border-radius: 4px;
+                "></div>
             </div>
-
-            <div class="form-group">
-                <label>模型权重路径</label>
-                <input type="text" value="/SyncTalk/model/source_ep10">
-            </div>
-
-            <div class="form-group">
-                <label>对话 API 选择</label>
-                <select>
-                    <option>OpenAI API</option>
-                </select>
-            </div>
-
-            <div style="height: 50px;"></div> <button class="submit-btn stop-btn">● 停止对话</button>
+            </form>
         </div>
     </div>
+    <script>
+        (function() {
+            const audio = document.getElementById('previewAudio');
+            const video = document.getElementById('previewVideo');
+            const outputWaveInput = document.getElementById('outputWavePath');
+            const outputVideoInput = document.getElementById('outputVideoPath');
+            const generateAudioBtn = document.getElementById('generateAudioBtn');
+            const generateBtn = document.getElementById('generateBtn');
+            const inputTextEl = document.getElementById('inputText');
+            const chatInput = document.getElementById('chatInput');
+            const sendChatBtn = document.getElementById('sendChatBtn');
+
+            function appendMessage(sender, text) {
+                const messagesContainer = document.getElementById('chatMessages');
+                const messageEl = document.createElement('div');
+                messageEl.style.marginBottom = '8px';
+                messageEl.style.padding = '6px 10px';
+                messageEl.style.borderRadius = '8px';
+                messageEl.style.maxWidth = '80%';
+
+                if (sender === 'user') {
+                    messageEl.style.backgroundColor = '#d1e7ff';
+                    messageEl.style.marginLeft = 'auto';
+                    messageEl.style.textAlign = 'right';
+                } else if (sender === 'ai') {
+                    messageEl.style.backgroundColor = '#e2e3e5';
+                    messageEl.style.marginRight = 'auto';
+                    messageEl.style.textAlign = 'left';
+                }
+
+                messageEl.textContent = text;
+                messagesContainer.appendChild(messageEl);
+
+                // 自动滚动到底部
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
+            sendChatBtn.addEventListener('click', function() {
+                const message = chatInput.value.trim();
+                if (!message) {
+                    alert('请输入聊天内容');
+                    return;
+                }
+
+                // 先显示用户消息
+                appendMessage('user', message);
+
+                // 清空输入框（可选：立即清空 or 等回复后再清空）
+                chatInput.value = '';
+
+                // 发送请求
+                fetch("{{ url_for('ai_response') }}", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({ message: message })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data && data.reply) {
+                        appendMessage('ai', data.reply);
+                    } else {
+                        appendMessage('ai', '抱歉，我无法回答这个问题。');
+                    }
+                })
+                .catch(err => {
+                    console.error('聊天请求失败:', err);
+                    appendMessage('ai', '网络错误，请稍后重试。');
+                });
+            });
+            function setAudioSrc(src) {
+                if (!src) return;
+                audio.src = src;
+                audio.load();
+                const playPromise = audio.play();
+                if (playPromise && typeof playPromise.then === 'function') {
+                    playPromise.catch(() => {/* user gesture may be required */});
+                }
+            }
+
+            function setVideoSrc(src) {
+                if (!src) return;
+                video.src = src;
+                video.load();
+                const playPromise = video.play();
+                if (playPromise && typeof playPromise.then === 'function') {
+                    playPromise.catch(() => {/* ignore autoplay restrictions */});
+                }
+            }
+
+            // Initialize default preview media
+            setVideoSrc(outputVideoInput.value);
+            // Optional: if you want a default audio, set it here (left empty by default)
+            if (outputWaveInput.value) {
+                setAudioSrc(outputWaveInput.value);
+            }
+
+            // Manual change handlers
+            outputVideoInput.addEventListener('change', function() {
+                setVideoSrc(this.value);
+            });
+            outputWaveInput.addEventListener('change', function() {
+                setAudioSrc(this.value);
+            });
+
+            // Generate Audio button handler
+            generateAudioBtn.addEventListener('click', function() {
+                const inputText = (inputTextEl.value || '').trim();
+                if (!inputText) {
+                    alert('请输入要合成的文本');
+                    return;
+                }
+                // Call backend to generate audio via TTS
+                fetch("{{ url_for('generate') }}", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({ input_text: inputText })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data && data.status === 'success' && data.output_path) {
+                        // Update audio preview and text box with generated path
+                        outputWaveInput.value = data.output_path;
+                        setAudioSrc(data.output_path);
+                    } else {
+                        alert(data && data.message ? data.message : '音频生成失败');
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert('音频生成失败');
+                });
+            });
+
+            // Generate Video button: only reload the video from its path for now
+            generateBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                setVideoSrc(outputVideoInput.value);
+            });
+        })();
+    </script>
 </body>
 
 </html>

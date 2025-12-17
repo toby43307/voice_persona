@@ -130,7 +130,7 @@
                     return;
                 }
                 // Call backend to generate audio via TTS
-                fetch('{{ url_for('generate') }}', {
+                fetch("{{ url_for('generate') }}", {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                     body: new URLSearchParams({ input_text: inputText })

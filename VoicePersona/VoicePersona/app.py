@@ -1,12 +1,21 @@
 from flask import Flask, render_template, request, jsonify, send_from_directory
 import subprocess
 import os
+from openai import OpenAI
 
 app = Flask(__name__)
 
 # Resolve project root (repo root)
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 OUTPUT_DIR = os.path.join(PROJECT_ROOT, 'output')
+
+
+app = Flask(__name__)
+client = OpenAI(
+    api_key="sk-84a40a46260844e3901324bffd05e906", #os.getenv("DEEPSEEK_API_KEY"),
+    base_url="https://api.deepseek.com/v1"
+)
+
 
 # 1. 主页
 @app.route('/')
@@ -67,5 +76,23 @@ def generate():
 def chat():
     return render_template('chat.html')
 
+@app.route('/ai_response', methods=['POST'])
+def ai_response():
+    user_message = request.form.get('message', '').strip()
+    if not user_message:
+        return jsonify({"error": "消息不能为空"}), 400
+
+    try:
+        response = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[{"role": "user", "content": user_message}],
+            temperature=0.7,
+            max_tokens=512
+        )
+        ai_reply = response.choices[0].message.content.strip()
+        return jsonify({"reply": ai_reply})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
 if __name__ == '__main__':
     app.run(debug=True, port=5001)
