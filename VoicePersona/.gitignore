@@ -12,3 +12,6 @@
 /cosyvoice/utils/__pycache__
 /cosyvoice/__pycache__
 /VoicePersona/.vs
+/output
+/pretrained_models
+/third_party
