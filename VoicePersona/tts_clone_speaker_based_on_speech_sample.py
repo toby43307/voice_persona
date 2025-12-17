@@ -39,11 +39,15 @@ def main():
     cosyvoice = CosyVoice2('pretrained_models/CosyVoice2-0.5B', load_jit=False, load_trt=False, load_vllm=False, fp16=False)
 
     # Prompt and reference sentence
-    prompt_speech_16k = load_wav('./asset/Trump_1st_15s.wav', 16000)
-    sentence_to_learn = (
-        "Where they opened up a lot of different plants, energy plants, energy producing plants and they're doing well. "
-        "I give Germany a lot of credit for that. They've said this is a disaster, what's happening. They were going all green."
-    )
+    #prompt_speech_16k = load_wav('./asset/Trump_1st_15s.wav', 16000)
+    #sentence_to_learn = (
+    #     "Where they opened up a lot of different plants, energy plants, energy producing plants and they're doing well. "
+    #     "I give Germany a lot of credit for that. They've said this is a disaster, what's happening. They were going all green."
+    # )
+
+    prompt_speech_16k = load_wav('./asset/Obama_1st_15s.wav', 16000)
+    sentence_to_learn = ("Speak with you about the battle we're waging against an oil spill that is assaulting our shores and our citizens."
+                         "On April twentieth, an explosion ripped through BP deep water horizon drilling rig, about forty miles off")
 
     # Run zero-shot inference (can return multiple streamed chunks)
     audio_chunks: List[torch.Tensor] = []
@@ -72,5 +76,5 @@ if __name__ == '__main__':
     main()
 
 # test samples
-# "We have virtually stopped drugs comining into our country by sea. We call them the water drugs."
+# "We have virtually stopped drugs coming into our country by sea. We call them the water drugs."
 # "I don't mind making this speech without a teleprompter because the teleprompter is not working."
