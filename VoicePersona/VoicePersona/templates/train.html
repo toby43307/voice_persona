@@ -54,7 +54,9 @@
                 </div>
 
                 <div style="margin-top: 20px;">
-                    <button type="submit" class="submit-btn">Training!</button>
+                    <button type="submit" class="submit-btn">Train</button>
+                </div>
+                <div id="trainStatus" style="margin-top:18px;color:#1976d2;font-weight:bold;"></div>
                 </div>
             </form>
         </div>
@@ -62,18 +64,22 @@
 </body>
 </body>
 <script>
-    // 自动预览视频（如果表单有新输入则更新）
+    // 拦截表单提交，点击Training按钮时只更新视频并提示训练中，不跳转
     (function() {
+        const form = document.querySelector('.right-form form');
         const videoInput = document.querySelector('input[name="video_path"]');
         const video = document.getElementById('previewVideo');
-        if (videoInput && video) {
-            videoInput.addEventListener('change', function() {
-                video.src = this.value;
+        const trainStatus = document.getElementById('trainStatus');
+        if (form && videoInput && video && trainStatus) {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                video.src = videoInput.value;
                 video.load();
                 const playPromise = video.play();
                 if (playPromise && typeof playPromise.then === 'function') {
                     playPromise.catch(() => {/* ignore autoplay restrictions */});
                 }
+                trainStatus.textContent = '训练中...';
             });
         }
     })();
