@@ -64,7 +64,7 @@
                 <!-- 视频预览和下一步用到的控件（与音频分离） -->
                 <div class="form-group" style="margin-top: 16px;">
                     <label>输出视频地址</label>
-                    <input type="text" id="outputVideoPath" value="{{ url_for('static', filename='videos/Trump.mp4') }}" placeholder="例如：/static/videos/output.mp4">
+                    <input type="text" id="outputVideoPath" placeholder="例如：/static/videos/output.mp4">
                 </div>
                 <div style="margin-top: 8px;">
                     <button type="submit" id="generateBtn" class="submit-btn">生成视频</button>
@@ -88,11 +88,11 @@
             let speakerProfiles = null;
 
             function toMediaUrl(projectRelativePath) {
-                // Convert paths like './asset/Obama_1st_15s.wav' to '/media/asset/Obama_1st_15s.wav'
+                // Convert paths like './asset/Obama_1st_15s.wav' or './asset/Obama.mp4' to '/media/asset/...'
                 if (!projectRelativePath) return '';
                 const trimmed = projectRelativePath.replace(/^\.\//, '');
                 if (trimmed.startsWith('asset/')) {
-                    return '/media/' + trimmed.replace('asset/', 'asset/');
+                    return '/media/' + trimmed; // served by /media/asset/<file>
                 }
                 return projectRelativePath;
             }
@@ -109,31 +109,35 @@
                 video.load();
             }
 
-            function updateReferencePath() {
+            function updateReferenceMedia() {
                 if (!speakerProfiles) return;
                 const key = (targetSpeakerEl.value || '').toLowerCase();
                 const profile = speakerProfiles[key];
-                if (profile && profile.wav) {
-                    const mediaUrl = toMediaUrl(profile.wav);
-                    referenceAudioPathEl.value = mediaUrl;
-                    setAudioSrc(mediaUrl);
+                if (!profile) return;
+
+                if (profile.wav) {
+                    const audioUrl = toMediaUrl(profile.wav);
+                    referenceAudioPathEl.value = audioUrl;
+                    setAudioSrc(audioUrl);
+                }
+                if (profile.video) {
+                    const videoUrl = toMediaUrl(profile.video);
+                    outputVideoInput.value = videoUrl;
+                    setVideoSrc(videoUrl);
                 }
             }
 
-            // Initialize default preview media without autoplay
-            setVideoSrc(outputVideoInput.value);
-
-            // Load speaker profiles JSON and set initial reference audio
+            // Load speaker profiles JSON and set initial reference audio/video based on current selection
             fetch('/config/speakers')
                 .then(res => res.json())
                 .then(data => {
                     speakerProfiles = data || {};
-                    updateReferencePath();
+                    updateReferenceMedia();
                 })
                 .catch(err => console.error('Failed to load speaker profiles', err));
 
             // Handlers
-            targetSpeakerEl.addEventListener('change', updateReferencePath);
+            targetSpeakerEl.addEventListener('change', updateReferenceMedia);
             outputVideoInput.addEventListener('change', function() { setVideoSrc(this.value); });
             outputWaveInput.addEventListener('change', function() { setAudioSrc(this.value); });
 
