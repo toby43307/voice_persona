@@ -26,3 +26,11 @@ Uninstalling numpy-2.2.6:
 (py310_asr_tts) D:\git-repos\CosyVoice>python -m pip install onnx==1.16.0 onnxruntime==1.18.0
 
 python -m pip install flask
+
+@@@ 20251217
+
+(py310_asr_tts) D:\git-repos\VoicePersona>python -m pip install openai
+
+@@@ 20251217 - tensorflow is required for AD-NeRF data processing : step 0; not yet resolved
+
+	(py310_asr_tts) D:\git-repos\VoicePersona>python -m pip install tensorflow

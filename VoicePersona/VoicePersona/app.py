@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, jsonify, send_from_directory
 import subprocess
 import os
+import json
 from openai import OpenAI
 
 app = Flask(__name__)
@@ -8,6 +9,8 @@ app = Flask(__name__)
 # Resolve project root (repo root)
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 OUTPUT_DIR = os.path.join(PROJECT_ROOT, 'output')
+ASSET_DIR = os.path.join(PROJECT_ROOT, 'asset')
+SPEAKER_PROFILES_PATH = os.path.join(PROJECT_ROOT, 'speaker_profiles.json')
 
 
 app = Flask(__name__)
@@ -37,19 +40,36 @@ def media_output(filename: str):
     # Serve files from the repo-level output directory
     return send_from_directory(OUTPUT_DIR, filename)
 
+# Static serving for asset reference audio files
+@app.route('/media/asset/<path:filename>')
+def media_asset(filename: str):
+    return send_from_directory(ASSET_DIR, filename)
+
+# Serve speaker profiles JSON for frontend
+@app.route('/config/speakers')
+def config_speakers():
+    try:
+        with open(SPEAKER_PROFILES_PATH, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 # 3. 视频生成页面
 @app.route('/generate', methods=['GET', 'POST'])
 def generate():
     if request.method == 'POST':
-        # Expect JSON or form with input_text
+        # Expect JSON or form with input_text and target_speaker
         input_text = request.form.get('input_text') or (request.json.get('input_text') if request.is_json else None)
-        print("开始生成...", input_text)
+        target_speaker = request.form.get('target_speaker') or (request.json.get('target_speaker') if request.is_json else None)
+        print("开始生成...", input_text, target_speaker)
         output_url = None
         if input_text and input_text.strip():
             # Run TTS script in project root to generate audio
             script_path = os.path.join(PROJECT_ROOT, 'tts_clone_speaker_based_on_speech_sample.py')
             try:
-                subprocess.run(['python', script_path, input_text], cwd=PROJECT_ROOT, check=True)
+                # Pass target_speaker as the first argument (script expects target_speaker then text)
+                subprocess.run(['python', script_path, target_speaker, input_text], cwd=PROJECT_ROOT, check=True)
                 # Determine latest generated file in output folder
                 latest_file = None
                 latest_mtime = -1
