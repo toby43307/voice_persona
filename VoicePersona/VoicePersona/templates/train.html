@@ -10,13 +10,11 @@
 <body>
     <div class="main-content" style="position:relative;min-height:600px;">
         <div class="left-preview">
-            <div class="audio-box" style="margin-bottom: 12px;">
-                <audio id="previewAudio" class="preview-audio" controls autoplay style="width:100%;"></audio>
-            </div>
+            <!--<div class="audio-box" style="margin-bottom: 12px;">
+                <audio id="previewAudio" class="preview-audio" controls style="width:100%;"></audio>
+            </div>-->
             <div class="video-box">
-                <video id="previewVideo" class="preview-video" controls autoplay muted loop style="width:100%; height:auto; background:#000;"
-                    src="{{ request.form.get('video_path', 'static/videos/Trump.mp4') }}">
-                </video>
+                <video id="previewVideo" class="preview-video" controls loop style="width:100%; height:auto; background:#000;"></video>
             </div>
         </div>
 
@@ -24,33 +22,51 @@
             <form method="POST">
                 <div class="form-group">
                     <label>模型名称</label>
-                    <select name="model_name">
-                        <option>SyncTalk</option>
-                        <option>Model A</option>
+                    <p style="margin:6px 0;">Voice Persona</p>
+                </div>
+
+                <div class="form-group">
+                    <label>训练目标演讲者</label>
+                    <select id="targetSpeaker">
+                        <option value="obama">Obama</option>
+                        <option value="trump">Trump</option>
+                        <option value="achu">路人甲</option>
                     </select>
                 </div>
 
                 <div class="form-group">
-                    <label>参考视频地址</label>
-                    <input type="text" name="video_path" value="static/videos/Trump.mp4">
+                    <label>训练数据文件夹</label>
+                    <input type="text" id="dataFolderInput" placeholder="例如：dataset/Obama" value="dataset/Obama">
                 </div>
 
                 <div class="form-group">
-                    <label>GPU选择</label>
-                    <select name="gpu">
-                        <option>GPU 0</option>
-                        <option>GPU 1</option>
-                    </select>
+                    <label>训练项选择（二选一）</label>
+                    <div style="margin:6px 0; display:flex; gap:12px; align-items:center;">
+                        <label><input type="radio" name="trainType" id="trainHead" value="head" checked> Train Head-NeRF</label>
+                        <label><input type="radio" name="trainType" id="trainTorso" value="torso"> Train Torso-NeRF</label>
+                    </div>
                 </div>
 
                 <div class="form-group">
-                    <label>Epoch (训练轮数)</label>
-                    <input type="number" name="epoch" value="10">
+                    <label>命令预览</label>
+                    <div id="commandsContainer" style="background:#0f1520;border:1px solid #263238;border-radius:6px;padding:10px;color:#e0e0e0;">
+                        <div id="cmdTitle" style="margin-bottom:6px;font-weight:bold;">Head-NeRF</div>
+                        <pre id="cmdPreview" style="white-space:pre-wrap;margin:0;">python NeRFs/HeadNeRF/run_nerf.py --config dataset/$id/HeadNeRF_config.txt</pre>
+                    </div>
                 </div>
 
                 <div class="form-group">
-                    <label>自定义训练参数</label>
-                    <input type="text" placeholder="请输入自定义参数...">
+                    <label>现有检查点</label>
+                    <div style="display:flex; gap:12px;">
+                        <div style="flex:1;">
+                            <div style="margin-bottom:4px;font-weight:bold;">Head-NeRF</div>
+                            <textarea id="headCkptList" rows="6" style="width:100%; resize:vertical; overflow:auto;" placeholder="例如：\n190000_head.tar\n200000_head.tar\n..."></textarea>
+                        </div>
+                        <div style="flex:1;">
+                            <div style="margin-bottom:4px;font-weight:bold;">Torso-NeRF</div>
+                            <textarea id="torsoCkptList" rows="6" style="width:100%; resize:vertical; overflow:auto;" placeholder="例如：\n190000_body.tar\n200000_body.tar\n..."></textarea>
+                        </div>
+                    </div>
                 </div>
 
                 <div style="margin-top: 20px;">
@@ -64,21 +80,108 @@
 </body>
 </body>
 <script>
-    // 拦截表单提交，点击Training按钮时只更新视频并提示训练中，不跳转
+    // 允许设置数据集文件夹、选择训练说话人，并在二选一训练项下显示相应命令，同时显示现有检查点（文件名列表）。
     (function() {
         const form = document.querySelector('.right-form form');
-        const videoInput = document.querySelector('input[name="video_path"]');
         const video = document.getElementById('previewVideo');
         const trainStatus = document.getElementById('trainStatus');
-        if (form && videoInput && video && trainStatus) {
+        const dataFolderInput = document.getElementById('dataFolderInput');
+        const cmdPreviewEl = document.getElementById('cmdPreview');
+        const cmdTitleEl = document.getElementById('cmdTitle');
+        const targetSpeakerEl = document.getElementById('targetSpeaker');
+        const trainHeadEl = document.getElementById('trainHead');
+        const trainTorsoEl = document.getElementById('trainTorso');
+        const headCkptList = document.getElementById('headCkptList');
+        const torsoCkptList = document.getElementById('torsoCkptList');
+
+        let speakerProfiles = null;
+
+        const tmplHead = 'python NeRFs/HeadNeRF/run_nerf.py --config dataset/$id/HeadNeRF_config.txt';
+        const tmplTorso = 'python NeRFs/TorsoNeRF/run_nerf.py --config dataset/$id/TorsoNeRF_config.txt';
+
+        function toMediaUrl(projectRelativePath) {
+            if (!projectRelativePath) return '';
+            const trimmed = projectRelativePath.replace(/^\.\//, '');
+            if (trimmed.startsWith('asset/')) {
+                return '/media/' + trimmed; // served by /media/asset/<file>
+            }
+            return projectRelativePath;
+        }
+
+        function renderCommands() {
+            const idPath = (dataFolderInput.value || '').trim() || '$id';
+            const replaceAll = (s) => s.replaceAll('$id', idPath);
+            if (trainHeadEl.checked) {
+                cmdTitleEl.textContent = 'Head-NeRF';
+                cmdPreviewEl.textContent = replaceAll(tmplHead);
+            } else {
+                cmdTitleEl.textContent = 'Torso-NeRF';
+                cmdPreviewEl.textContent = replaceAll(tmplTorso);
+            }
+        }
+
+        function updateReferenceVideo(fromSpeakerChange = false) {
+            if (!speakerProfiles) return;
+            const key = (targetSpeakerEl.value || '').toLowerCase();
+            const profile = speakerProfiles[key];
+            if (profile && profile.video) {
+                const videoUrl = toMediaUrl(profile.video);
+                video.src = videoUrl;
+                video.load();
+            }
+            if (fromSpeakerChange) {
+                const capitalized = key.charAt(0).toUpperCase() + key.slice(1);
+                dataFolderInput.value = `dataset/${capitalized}`;
+                renderCommands();
+                updateCheckpoints();
+            }
+        }
+
+        function basename(path) {
+            const parts = (path || '').split('/');
+            return parts[parts.length - 1] || '';
+        }
+
+        function updateCheckpoints() {
+            const datasetPath = (dataFolderInput.value || '').trim();
+            if (!datasetPath) { headCkptList.value = ''; torsoCkptList.value=''; return; }
+            fetch(`/api/checkpoints?dataset=${encodeURIComponent(datasetPath)}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data && !data.error) {
+                        const headNames = Array.isArray(data.head) ? data.head.map(basename) : [];
+                        const torsoNames = Array.isArray(data.torso) ? data.torso.map(basename) : [];
+                        headCkptList.value = headNames.join('\n');
+                        torsoCkptList.value = torsoNames.join('\n');
+                    } else {
+                        headCkptList.value = '';
+                        torsoCkptList.value = '';
+                    }
+                })
+                .catch(() => { headCkptList.value=''; torsoCkptList.value=''; });
+        }
+
+        // Load speaker profiles JSON and set initial video based on selected speaker
+        fetch('/config/speakers')
+            .then(res => res.json())
+            .then(data => {
+                speakerProfiles = data || {};
+                updateReferenceVideo(false);
+                renderCommands();
+                updateCheckpoints();
+            })
+            .catch(err => console.error('Failed to load speaker profiles', err));
+
+        // Change handlers
+        targetSpeakerEl.addEventListener('change', function() { updateReferenceVideo(true); });
+        trainHeadEl.addEventListener('change', renderCommands);
+        trainTorsoEl.addEventListener('change', renderCommands);
+        dataFolderInput.addEventListener('input', function(){ renderCommands(); updateCheckpoints(); });
+
+        // 拦截表单提交，点击Training按钮时不跳转，仅提示
+        if (form && trainStatus) {
             form.addEventListener('submit', function(e) {
                 e.preventDefault();
-                video.src = videoInput.value;
-                video.load();
-                const playPromise = video.play();
-                if (playPromise && typeof playPromise.then === 'function') {
-                    playPromise.catch(() => {/* ignore autoplay restrictions */});
-                }
                 trainStatus.textContent = '训练中...';
             });
         }

@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, jsonify, send_from_directory
 import subprocess
 import os
 import json
+import glob
 from openai import OpenAI
 
 app = Flask(__name__)
@@ -54,6 +55,39 @@ def config_speakers():
         return jsonify(data)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+# API: list all head and torso checkpoints for a dataset
+@app.route('/api/checkpoints')
+def api_checkpoints():
+    dataset = (request.args.get('dataset') or '').strip()
+    if not dataset:
+        return jsonify({"error": "dataset is required"}), 400
+    # Normalize and build absolute path
+    rel_path = dataset.replace('\\', '/').lstrip('/')
+    base_path = os.path.normpath(os.path.join(PROJECT_ROOT, rel_path))
+    # Safety: ensure within project root
+    if not base_path.startswith(PROJECT_ROOT):
+        return jsonify({"error": "invalid dataset path"}), 400
+    logs_dir = os.path.join(base_path, 'logs')
+
+    # Specific subfolders based on naming convention
+    head_dir = os.path.join(logs_dir, f"{os.path.basename(rel_path)}_head")
+    torso_dir = os.path.join(logs_dir, f"{os.path.basename(rel_path)}_com")
+
+    def list_files(search_dir, pattern):
+        if not os.path.isdir(search_dir):
+            return []
+        files = glob.glob(os.path.join(search_dir, pattern))
+        files.sort(key=lambda p: os.path.getmtime(p), reverse=True)
+        return [os.path.relpath(p, PROJECT_ROOT).replace('\\', '/') for p in files]
+
+    head_list = list_files(head_dir, "*_head.tar")   # e.g., dataset/Obama/logs/Obama_head/*_head.tar
+    torso_list = list_files(torso_dir, "*_body.tar") # e.g., dataset/Obama/logs/Obama_com/*_body.tar
+
+    return jsonify({
+        "head": head_list,
+        "torso": torso_list
+    })
 
 # 3. 视频生成页面
 @app.route('/generate', methods=['GET', 'POST'])
