@@ -24,14 +24,33 @@ import torchaudio
 import os
 import re
 import inflect
+# try:
+#     import ttsfrd
+#     use_ttsfrd = True
+# except ImportError:
+#     print("failed to import ttsfrd, use wetext instead")
+#     from wetext import Normalizer as ZhNormalizer
+#     from wetext import Normalizer as EnNormalizer
+#     use_ttsfrd = False
+
+# BIT test: to avoid _kaldifst DLL problem on Windows
+# ---- Dummy Normalizer patch for Windows ----
 try:
-    import ttsfrd
-    use_ttsfrd = True
-except ImportError:
-    print("failed to import ttsfrd, use wetext instead")
     from wetext import Normalizer as ZhNormalizer
     from wetext import Normalizer as EnNormalizer
+except ImportError:
+    class DummyNormalizer:
+        def __init__(self, remove_erhua=False):
+            self.remove_erhua = remove_erhua
+        def normalize(self, text):
+            return text  # just return text as-is
+    
     use_ttsfrd = False
+    ZhNormalizer = DummyNormalizer
+    EnNormalizer = DummyNormalizer
+# -------------------------------------------
+
+
 from cosyvoice.utils.file_utils import logging
 from cosyvoice.utils.frontend_utils import contains_chinese, replace_blank, replace_corner_mark, remove_bracket, spell_out_number, split_paragraph, is_only_punctuation
 

@@ -1,4 +1,49 @@
-﻿@@@
+﻿@@@ downgrade from py310 to py39
+
+pip install  librosa==0.10.2  soundfile==0.12.1  soxr==1.0.0  audioread==3.1.0  resampy==0.4.3  python-speech-features==0.6  openai-whisper==20231117
+  
+  pip install  dlib==19.24.1  face-alignment==1.4.1  face-recognition==1.3.0  face-recognition-models==0.3.0  scikit-image==0.24.3  pillow==9.5.0
+  
+  conda install -c conda-forge   dlib=19.24.1   scikit-image=0.24.3   pillow=9.5.0   face-alignment=1.4.1   face-recognition=1.3.0   face-recognition-models=0.3.0
+  
+  pip install  transformers==4.51.3  diffusers==0.29.0  safetensors==0.7.0  tokenizers==0.21.4  huggingface-hub==0.36.0
+  
+  pip install  lightning==2.2.4  pytorch-lightning==2.6.0  torchmetrics==1.8.2  tensorboard==2.14.0  tensorboardx==2.6.4
+  
+  pip install  fastapi==0.115.6  uvicorn==0.30.0  gradio==4.44.1  flask==2.3.3
+
+  pip install openai==1.30.5
+  pip install "httpx<0.27"
+  pip install hyperpyyaml==1.2.2
+  pip install modelscope==1.10.0
+  pip install onnxruntime==1.16.3
+  pip install inflect==7.0.0
+	
+	pip install wetext==0.1.2
+
+    You can patch cosyvoice/cli/frontend.py to bypass imports that fail:
+	try:
+        import ttsfrd
+        # ttsfrd-based normalizer (if needed)
+    except ModuleNotFoundError:
+        # Fallback: simple identity normalizer
+        class DummyNormalizer:
+            def normalize(self, text):
+                return text
+        ZhNormalizer = EnNormalizer = DummyNormalizer()
+
+  pip install omegaconf==2.3.0
+  pip install speechbrain
+
+  pip install conformer==0.3.2
+  pip install hydra-core==1.3.2
+  pip install gdown
+  pip install wget
+  pip install pyworld
+
+
+
+@@@
 
 upgrade torch from 2.3.1 to 2.5.1
 	pip uninstall torch torchaudio torchvision -y
