@@ -45,11 +45,11 @@ except ImportError:
         def normalize(self, text):
             return text  # just return text as-is
     
-    use_ttsfrd = False
+
     ZhNormalizer = DummyNormalizer
     EnNormalizer = DummyNormalizer
 # -------------------------------------------
-
+use_ttsfrd = False
 
 from cosyvoice.utils.file_utils import logging
 from cosyvoice.utils.frontend_utils import contains_chinese, replace_blank, replace_corner_mark, remove_bracket, spell_out_number, split_paragraph, is_only_punctuation

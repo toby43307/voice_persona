@@ -40,6 +40,9 @@ pip install  librosa==0.10.2  soundfile==0.12.1  soxr==1.0.0  audioread==3.1.0  
   pip install gdown
   pip install wget
   pip install pyworld
+  pip install face-alignment==1.4.1
+
+  pip install tensorflow-cpu==2.10.0
 
 
 
