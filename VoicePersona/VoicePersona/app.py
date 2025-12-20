@@ -3,6 +3,7 @@ import subprocess
 import os
 import json
 import glob
+import sys
 from openai import OpenAI
 
 app = Flask(__name__)
@@ -89,6 +90,29 @@ def api_checkpoints():
         "torso": torso_list
     })
 
+
+def _find_conda_exe():
+    """Try to resolve a usable conda executable path on Windows and other OS."""
+    # Respect CONDA_EXE if present
+    conda_exe = os.environ.get('CONDA_EXE')
+    if conda_exe and os.path.isfile(conda_exe):
+        return conda_exe
+
+    # Common Windows install locations
+    home = os.path.expanduser('~')
+    candidates = [
+        os.path.join(home, 'miniconda3', 'Scripts', 'conda.exe'),
+        os.path.join(home, 'Anaconda3', 'Scripts', 'conda.exe'),
+        os.path.join(home, 'Miniconda3', 'Scripts', 'conda.exe'),
+        'conda',
+        'conda.exe'
+    ]
+    for c in candidates:
+        if os.path.isfile(c):
+            return c
+    # Fallback to plain name (may work if on PATH)
+    return 'conda'
+
 # API: run data processing step
 @app.route('/api/process_data', methods=['POST'])
 def api_process_data():
@@ -112,13 +136,28 @@ def api_process_data():
     if not step.isdigit():
         return jsonify({"status": "error", "message": "step must be an integer"}), 400
 
-    cmd = ['python', 'data_util/process_data.py', f'--id={speaker}', f'--step={step}']
+    # Steps that require ASR env
+    use_asr_env = step in {'0', '3', '6'}
+
+    # Build command; prefer conda run to activate env reliably in subprocess
+    if use_asr_env:
+        conda_exe = _find_conda_exe()
+        cmd = [conda_exe, 'run', '-n', 'py39asr_clean', 'python', 'data_util/process_data.py', f'--id={speaker}', f'--step={step}']
+    else:
+        cmd = ['python', 'data_util/process_data.py', f'--id={speaker}', f'--step={step}']
+
+    # Echo the command to the Flask console for visibility
+    print('Running command:', ' '.join(cmd))
+
     try:
-        # Run in project root
+        # Run in project root, inherit stdout/stderr so child output appears in console
         subprocess.run(cmd, cwd=PROJECT_ROOT, check=True)
         return jsonify({"status": "success", "message": "Process data completed."})
     except subprocess.CalledProcessError as e:
         return jsonify({"status": "error", "message": f"Process data failed: {e}"}), 500
+    except FileNotFoundError as e:
+        # conda not found or python not found
+        return jsonify({"status": "error", "message": f"Dependency not found: {e}. Tried command: {' '.join(cmd)}"}), 500
 
 # 3. 视频生成页面
 @app.route('/generate', methods=['GET', 'POST'])
