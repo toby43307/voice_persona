@@ -3,47 +3,46 @@ channels:
   - conda-forge
   - pytorch
   - nvidia
+
 dependencies:
   - python=3.10
   - pip
 
-  # Core numeric
+  # Native libs (avoid pip builds)
+  - pyworld
+  - dlib
+
+  # Numeric
   - numpy
   - scipy
 
   # Audio / vision
   - ffmpeg
   - opencv
-
-  # PyTorch + CUDA (matches your base image)
-  - pytorch=2.5
-  - pytorch-cuda=12.1
-  - torchvision
-  - torchaudio
-
-  # Useful runtime libs
-  - hdf5
   - libsndfile
+  - hdf5
 
   - pip:
+      - --extra-index-url https://download.pytorch.org/whl/cu121
+      - torch==2.5.1+cu121
+      - torchvision==0.20.1+cu121
+      - torchaudio==2.5.1+cu121
+
       # ML / AI
       - transformers
       - diffusers
       - accelerate
       - lightning
-      - pytorch-lightning
 
       # Audio / speech
       - librosa
       - soundfile
       - soxr
-      - pyworld
       - openai-whisper
 
       # CV / face
       - face-alignment
       - face-recognition
-      - dlib
 
       # Web / UI
       - fastapi
