@@ -92,10 +92,26 @@ def api_checkpoints():
 # API: run data processing step
 @app.route('/api/process_data', methods=['POST'])
 def api_process_data():
-    speaker = (request.form.get('speaker') or request.json.get('speaker') if request.is_json else '').strip()
-    step = (request.form.get('step') or request.json.get('step') if request.is_json else '').strip()
+    # Prefer form fields, then JSON, then query args for robustness
+    speaker = (request.form.get('speaker')
+               or (request.json.get('speaker') if request.is_json and request.json else None)
+               or request.args.get('speaker')
+               or '')
+    step = (request.form.get('step')
+            or (request.json.get('step') if request.is_json and request.json else None)
+            or request.args.get('step')
+            or '')
+
+    speaker = (speaker or '').strip()
+    step = (str(step) if step is not None else '').strip()
+
     if not speaker or step == '':
-        return jsonify({"error": "speaker and step are required"}), 400
+        return jsonify({"status": "error", "message": "speaker and step are required"}), 400
+
+    # Validate step is an integer
+    if not step.isdigit():
+        return jsonify({"status": "error", "message": "step must be an integer"}), 400
+
     cmd = ['python', 'data_util/process_data.py', f'--id={speaker}', f'--step={step}']
     try:
         # Run in project root
