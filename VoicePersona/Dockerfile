@@ -24,7 +24,7 @@ SHELL ["/bin/bash", "-c"]
 WORKDIR /VoicePersona
 
 # Copy only env file first (cache-friendly)
-COPY docker_environment.yml .
+COPY docker_environment_py39.yml ./docker_environment.yml
 
 # Create conda environment
 RUN micromamba create -y \
@@ -38,4 +38,7 @@ ENV PATH=/opt/conda/envs/voicepersona_env/bin:$PATH
 # Copy project files
 COPY . .
 
-CMD ["python", "main.py"]
+# Expose Flask port (optional)
+EXPOSE 5001
+
+CMD ["python", "VoicePersona/app.py"]
