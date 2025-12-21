@@ -37,12 +37,15 @@ dependencies:
       - diffusers
       - accelerate
       - lightning
+      - openai
 
       # Audio / speech
       - librosa
       - soundfile
       - soxr
       - openai-whisper
+      - resampy==0.4.3
+      - python-speech-features==0.6
 
       # CV / face
       - face-alignment
