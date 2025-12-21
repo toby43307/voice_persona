@@ -1,3 +1,4 @@
+.vs/
 .git
 .gitignore
 __pycache__/
@@ -23,7 +24,6 @@ cache/
 output/
 pretrained_models/
 third_party/
-dataset/
 
 # OS junk
 Thumbs.db
