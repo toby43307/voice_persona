@@ -139,7 +139,7 @@ def api_process_data():
         return jsonify({"status": "error", "message": "step must be an integer"}), 400
 
     # Steps that require ASR env
-    use_asr_env = step in {'0', '3', '6'}
+    use_asr_env = step in {'10', '13', '16'}
 
     # Build command; prefer conda run to activate env reliably in subprocess
     if use_asr_env:
