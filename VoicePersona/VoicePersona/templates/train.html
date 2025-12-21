@@ -10,9 +10,6 @@
 <body>
     <div class="main-content" style="position:relative;min-height:600px;">
         <div class="left-preview">
-            <!--<div class="audio-box" style="margin-bottom: 12px;">
-                <audio id="previewAudio" class="preview-audio" controls style="width:100%;"></audio>
-            </div>-->
             <div class="video-box">
                 <video id="previewVideo" class="preview-video" controls loop style="width:100%; height:auto; background:#000;"></video>
             </div>
@@ -111,7 +108,6 @@
     </div>
 
 <script>
-    // 允许设置数据集文件夹、选择训练说话人，支持数据处理步骤执行，并在二选一训练项下显示相应命令，同时显示现有检查点（文件名列表）。
     (function() {
         const form = document.querySelector('.right-form form');
         const video = document.getElementById('previewVideo');
@@ -253,11 +249,31 @@
             .catch(() => alert('数据处理失败'));
         });
 
-        // 拦截表单提交，点击Training按钮时不跳转，仅提示
+        // Intercept form submit and run training
         if (form && trainStatus) {
             form.addEventListener('submit', function(e) {
                 e.preventDefault();
+                const datasetPath = (dataFolderInput.value || '').trim();
+                const trainType = document.getElementById('trainHead').checked ? 'head' : 'torso';
                 trainStatus.textContent = '训练中...';
+
+                fetch('/api/train', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({ dataset_path: datasetPath, train_type: trainType })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data && data.status === 'success') {
+                        trainStatus.textContent = '训练完成';
+                    } else {
+                        trainStatus.textContent = data && data.message ? data.message : '训练失败';
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    trainStatus.textContent = '训练失败';
+                });
             });
         }
     })();

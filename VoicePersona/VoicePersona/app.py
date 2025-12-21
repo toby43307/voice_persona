@@ -92,6 +92,39 @@ def api_checkpoints():
         "torso": torso_list
     })
 
+# API: run training based on selection
+@app.route('/api/train', methods=['POST'])
+def api_train():
+    train_type = (request.form.get('train_type')
+                  or (request.json.get('train_type') if request.is_json and request.json else None) or '').strip()
+    dataset_path = (request.form.get('dataset_path')
+                    or (request.json.get('dataset_path') if request.is_json and request.json else None) or '').strip()
+    if not train_type or train_type not in {'head', 'torso'}:
+        return jsonify({"status": "error", "message": "train_type must be 'head' or 'torso'"}), 400
+    if not dataset_path:
+        return jsonify({"status": "error", "message": "dataset_path is required"}), 400
+
+    rel_path = dataset_path.replace('\\', '/').lstrip('/')
+    base_path = os.path.normpath(os.path.join(PROJECT_ROOT, rel_path))
+    if not base_path.startswith(PROJECT_ROOT):
+        return jsonify({"status": "error", "message": "invalid dataset path"}), 400
+
+    # Build command according to preview templates
+    if train_type == 'head':
+        cmd = ['python', 'NeRFs/HeadNeRF/run_nerf.py', '--config', os.path.join(rel_path, 'HeadNeRF_config.txt')]
+        title = 'Head-NeRF'
+    else:
+        cmd = ['python', 'NeRFs/TorsoNeRF/run_nerf.py', '--config', os.path.join(rel_path, 'TorsoNeRF_config.txt')]
+        title = 'Torso-NeRF'
+
+    print('Training command:', ' '.join(cmd))
+    try:
+        # Non-blocking suggestion: in production use a task queue; here run synchronously
+        subprocess.run(cmd, cwd=PROJECT_ROOT, check=True)
+        return jsonify({"status": "success", "message": f"{title} training completed."})
+    except subprocess.CalledProcessError as e:
+        return jsonify({"status": "error", "message": f"Training failed: {e}"}), 500
+
 
 def _find_conda_exe():
     """Try to resolve a usable conda executable path on Windows and other OS."""
