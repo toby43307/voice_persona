@@ -14,6 +14,7 @@ app = Flask(__name__)
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 OUTPUT_DIR = os.path.join(PROJECT_ROOT, 'output')
 ASSET_DIR = os.path.join(PROJECT_ROOT, 'asset')
+DATASET_DIR = os.path.join(PROJECT_ROOT, 'dataset')
 SPEAKER_PROFILES_PATH = os.path.join(PROJECT_ROOT, 'speaker_profiles.json')
 
 
@@ -33,7 +34,6 @@ def index():
 @app.route('/train', methods=['GET', 'POST'])
 def train():
     if request.method == 'POST':
-        # 这里写实际连接 AI 训练的代码
         print("开始训练...", request.form)
         return jsonify({"status": "success", "message": "Training Started!"})
     return render_template('train.html')
@@ -41,13 +41,23 @@ def train():
 # Static serving for generated output files
 @app.route('/media/output/<path:filename>')
 def media_output(filename: str):
-    # Serve files from the repo-level output directory
     return send_from_directory(OUTPUT_DIR, filename)
 
-# Static serving for asset reference audio files
+# Static serving for asset reference audio/video files
 @app.route('/media/asset/<path:filename>')
 def media_asset(filename: str):
     return send_from_directory(ASSET_DIR, filename)
+
+# Static serving for dataset files (read-only)
+@app.route('/media/dataset/<path:relpath>')
+def media_dataset(relpath: str):
+    # Only serve within dataset directory
+    safe_path = os.path.normpath(os.path.join(DATASET_DIR, relpath))
+    if not safe_path.startswith(DATASET_DIR):
+        return jsonify({"error": "invalid dataset path"}), 400
+    # Split directory and filename for send_from_directory
+    directory, filename = os.path.split(safe_path)
+    return send_from_directory(directory, filename)
 
 # Serve speaker profiles JSON for frontend
 @app.route('/config/speakers')
@@ -91,6 +101,109 @@ def api_checkpoints():
         "head": head_list,
         "torso": torso_list
     })
+
+# API: extract DeepSpeech features for a given audio path
+@app.route('/api/extract_ds_features', methods=['POST'])
+def api_extract_ds_features():
+    audio_path = (request.form.get('audio_path')
+                  or (request.json.get('audio_path') if request.is_json and request.json else None) or '').strip()
+    if not audio_path:
+        return jsonify({"status": "error", "message": "audio_path is required"}), 400
+
+    def resolve_fs_path(path: str) -> str:
+        norm = path.replace('\\', '/')
+        if norm.startswith('/media/asset/'):
+            rel = norm[len('/media/asset/'):]
+            return os.path.join(ASSET_DIR, rel)
+        if norm.startswith('/media/output/'):
+            rel = norm[len('/media/output/'):]
+            return os.path.join(OUTPUT_DIR, rel)
+        if norm.startswith('/'):
+            return os.path.join(PROJECT_ROOT, norm.lstrip('/'))
+        return os.path.join(PROJECT_ROOT, norm)
+
+    fs_path = resolve_fs_path(audio_path)
+    if not os.path.isfile(fs_path):
+        return jsonify({"status": "error", "message": f"audio file not found: {fs_path}"}), 400
+
+    # Build output npy path (same folder, same stem)
+    file_stem, _ = os.path.splitext(fs_path)
+    out_npy = file_stem + '.npy'
+
+    script_path = os.path.join(PROJECT_ROOT, 'data_util', 'deepspeech_features', 'extract_ds_features.py')
+    try:
+        cmd = ['python', script_path, '--input', fs_path, '--output', out_npy]
+        print('Extract DS cmd:', ' '.join(cmd))
+        subprocess.run(cmd, cwd=PROJECT_ROOT, check=True)
+    except subprocess.CalledProcessError as e:
+        return jsonify({"status": "error", "message": f"extract_ds_features failed: {e}"}), 500
+
+    # Build a URL for the npy if under known served dirs
+    if out_npy.startswith(ASSET_DIR):
+        rel = os.path.relpath(out_npy, ASSET_DIR).replace('\\', '/')
+        npy_url = f"/media/asset/{rel}"
+    elif out_npy.startswith(OUTPUT_DIR):
+        rel = os.path.relpath(out_npy, OUTPUT_DIR).replace('\\', '/')
+        npy_url = f"/media/output/{rel}"
+    else:
+        npy_url = None
+
+    return jsonify({"status": "success", "npy_path": npy_url or out_npy})
+
+# API: generate video using TorsoNeRF test with aud_file npy
+@app.route('/api/generate_video', methods=['POST'])
+def api_generate_video():
+    speaker = (request.form.get('speaker')
+               or (request.json.get('speaker') if request.is_json and request.json else None) or '').strip()
+    npy_path = (request.form.get('npy_path')
+                or (request.json.get('npy_path') if request.is_json and request.json else None) or '').strip()
+    if not speaker:
+        return jsonify({"status": "error", "message": "speaker is required"}), 400
+    if not npy_path:
+        return jsonify({"status": "error", "message": "npy_path is required"}), 400
+
+    sp_cap = speaker.lower().capitalize()
+    dataset_rel = f"dataset/{sp_cap}"
+
+    def resolve_fs_path(path: str) -> str:
+        norm = path.replace('\\', '/')
+        if norm.startswith('/media/asset/'):
+            rel = norm[len('/media/asset/'):]
+            return os.path.join(ASSET_DIR, rel)
+        if norm.startswith('/media/output/'):
+            rel = norm[len('/media/output/'):]
+            return os.path.join(OUTPUT_DIR, rel)
+        if norm.startswith('/media/dataset/'):
+            rel = norm[len('/media/dataset/'):]
+            return os.path.join(DATASET_DIR, rel)
+        if norm.startswith('/'):
+            return os.path.join(PROJECT_ROOT, norm.lstrip('/'))
+        return os.path.join(PROJECT_ROOT, norm)
+
+    npy_fs = resolve_fs_path(npy_path)
+    if not os.path.isfile(npy_fs):
+        return jsonify({"status": "error", "message": f"npy file not found: {npy_fs}"}), 400
+
+    # Build command
+    config_rel = os.path.join(dataset_rel, 'TorsoNeRFTest_config.txt')
+    cmd = ['python', 'NeRFs/TorsoNeRF/run_nerf.py', '--config', config_rel, '--aud_file', npy_fs, '--test_size', '-1']
+    print('Generate video cmd:', ' '.join(cmd))
+
+    try:
+        subprocess.run(cmd, cwd=PROJECT_ROOT, check=True)
+    except subprocess.CalledProcessError as e:
+        return jsonify({"status": "error", "message": f"Video generation failed: {e}"}), 500
+
+    # Expected output path: dataset/<Speaker>/logs/<Speaker>_com/test_aud_rst/result.avi
+    logs_dir = os.path.join(PROJECT_ROOT, dataset_rel, 'logs')
+    out_dir = os.path.join(logs_dir, f"{sp_cap}_com", 'test_aud_rst')
+    result_path = os.path.join(out_dir, 'result.avi')
+    if not os.path.isfile(result_path):
+        return jsonify({"status": "error", "message": f"result video not found: {result_path}"}), 500
+
+    rel_url = os.path.relpath(result_path, DATASET_DIR).replace('\\', '/')
+    video_url = f"/media/dataset/{rel_url}"
+    return jsonify({"status": "success", "video_path": video_url})
 
 # API: run training based on selection
 @app.route('/api/train', methods=['POST'])
@@ -194,7 +307,7 @@ def api_process_data():
         # conda not found or python not found
         return jsonify({"status": "error", "message": f"Dependency not found: {e}. Tried command: {' '.join(cmd)}"}), 500
 
-# 3. 视频生成页面
+# 3. Generate audio
 @app.route('/generate', methods=['GET', 'POST'])
 def generate():
     if request.method == 'POST':
@@ -258,7 +371,7 @@ def generate_huawei():
         if norm.startswith('/media/asset/'):
             rel = norm[len('/media/asset/'):]
             return os.path.join(ASSET_DIR, rel)
-        if norm.startswith('/'):  # repo-root relative like /asset/xxx.wav
+        if norm.startswith('/'):
             return os.path.join(PROJECT_ROOT, norm.lstrip('/'))
         # Otherwise treat as project-relative
         return os.path.join(PROJECT_ROOT, norm)

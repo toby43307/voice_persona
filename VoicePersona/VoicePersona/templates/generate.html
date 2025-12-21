@@ -67,8 +67,9 @@
                     <label>输出视频地址</label>
                     <input type="text" id="outputVideoPath" placeholder="例如：/static/videos/output.mp4">
                 </div>
-                <div style="margin-top: 8px;">
+                <div style="margin-top: 8px; display:flex; gap:8px; align-items:center;">
                     <button type="submit" id="generateBtn" class="submit-btn">生成视频</button>
+                    <button type="button" id="playVideoBtn" class="submit-btn">播放视频</button>
                 </div>
             </form>
         </div>
@@ -83,6 +84,7 @@
             const generateAudioBtn = document.getElementById('generateAudioBtn');
             const generateAudioHuaweiBtn = document.getElementById('generateAudioHuaweiBtn');
             const generateBtn = document.getElementById('generateBtn');
+            const playVideoBtn = document.getElementById('playVideoBtn');
             const inputTextEl = document.getElementById('inputText');
             const targetSpeakerEl = document.getElementById('targetSpeaker');
             const referenceAudioPathEl = document.getElementById('referenceAudioPath');
@@ -235,10 +237,60 @@
                 });
             });
 
-            // Generate Video button: only reload the video from its path for now
+            // Generate Video button: first extract DeepSpeech features from selected audio
             generateBtn.addEventListener('click', function(e) {
                 e.preventDefault();
-                setVideoSrc(outputVideoInput.value);
+                const audioPath = (outputWaveInput.value || '').trim();
+                if (!audioPath) {
+                    alert('请先填写参考音频地址');
+                    return;
+                }
+                fetch('/api/extract_ds_features', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({ audio_path: audioPath })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data && data.status === 'success' && data.npy_path) {
+                        console.log('DeepSpeech npy generated:', data.npy_path);
+                        // After DS extraction, set or reload the video from its path
+                        setVideoSrc(outputVideoInput.value);
+
+                        // Send request to generate video using the speaker and npy_path
+                        const speaker = (targetSpeakerEl.value || '').trim().toLowerCase();
+                        const npyPath = data.npy_path;
+                        return fetch('/api/generate_video', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                            body: new URLSearchParams({ speaker: speaker, npy_path: npyPath })
+                        });
+                    } else {
+                        alert(data && data.message ? data.message : '特征提取失败');
+                    }
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data && data.status === 'success' && data.video_path) {
+                        outputVideoInput.value = data.video_path;
+                        setVideoSrc(data.video_path);
+                    } else {
+                        alert(data && data.message ? data.message : '视频生成失败');
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert('视频生成失败');
+                });
+            });
+
+            // Play Video button: load from outputVideoPath and start playback
+            playVideoBtn.addEventListener('click', function() {
+                const src = (outputVideoInput.value || '').trim();
+                if (!src) { alert('请先填写输出视频地址'); return; }
+                setVideoSrc(src);
+                // Attempt autoplay; some browsers require user gesture which a click satisfies
+                video.play().catch(() => { /* ignore if autoplay blocked */ });
             });
         })();
     </script>
