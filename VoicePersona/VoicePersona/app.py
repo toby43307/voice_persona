@@ -5,6 +5,8 @@ import json
 import glob
 import sys
 from openai import OpenAI
+import requests
+import time
 
 app = Flask(__name__)
 
@@ -194,6 +196,73 @@ def generate():
                 return jsonify({"status": "error", "message": f"Generation failed: {e}"}), 500
         return jsonify({"status": "success", "message": "Generation Completed!", "output_path": output_url})
     return render_template('generate.html')
+
+# Huawei Cloud TTS proxy endpoint
+@app.route('/generate_huawei', methods=['POST'])
+def generate_huawei():
+    # Read input
+    input_text = request.form.get('input_text') or (request.json.get('input_text') if request.is_json else None)
+    target_speaker = request.form.get('target_speaker') or (request.json.get('target_speaker') if request.is_json else None)
+    reference_audio_path = request.form.get('reference_audio_path') or (request.json.get('reference_audio_path') if request.is_json else None)
+    reference_text = request.form.get('reference_text') or (request.json.get('reference_text') if request.is_json else None)
+
+    input_text = (input_text or '').strip()
+    target_speaker = (target_speaker or '').strip()
+    reference_audio_path = (reference_audio_path or '').strip()
+    reference_text = (reference_text or '').strip()
+
+    if not input_text:
+        return jsonify({"status": "error", "message": "input_text is required"}), 400
+    if not target_speaker:
+        return jsonify({"status": "error", "message": "target_speaker is required"}), 400
+    if not reference_audio_path:
+        return jsonify({"status": "error", "message": "reference_audio_path is required"}), 400
+
+    # Map a media URL like /media/asset/xxx.wav to the filesystem path under ASSET_DIR
+    def resolve_reference_path(path: str) -> str:
+        # Accept absolute Windows paths, project-relative paths, or our media route.
+        norm = path.replace('\\', '/')
+        if norm.startswith('/media/asset/'):
+            rel = norm[len('/media/asset/'):]
+            return os.path.join(ASSET_DIR, rel)
+        if norm.startswith('/'):  # repo-root relative like /asset/xxx.wav
+            return os.path.join(PROJECT_ROOT, norm.lstrip('/'))
+        # Otherwise treat as project-relative
+        return os.path.join(PROJECT_ROOT, norm)
+
+    ref_fs_path = resolve_reference_path(reference_audio_path)
+    if not os.path.isfile(ref_fs_path):
+        return jsonify({"status": "error", "message": f"reference audio not found: {ref_fs_path}"}), 400
+
+    try:
+        # Hard-coded remote clone API per your request
+        public_ip = '1.94.211.55'
+        url = f"http://{public_ip}:8000/clone"
+
+        # Send file and form data per example
+        with open(ref_fs_path, 'rb') as f:
+            files = { 'reference_audio': f }
+            data = {
+                'reference_text': reference_text or '',
+                'target_text': input_text
+            }
+            resp = requests.post(url, files=files, data=data, timeout=120)
+
+        if resp.status_code != 200:
+            return jsonify({"status": "error", "message": f"Remote API error: {resp.status_code} {resp.text}"}), 502
+
+        # Save binary audio content to OUTPUT_DIR
+        os.makedirs(OUTPUT_DIR, exist_ok=True)
+        timestamp = time.strftime('%y%m%d_%H%M%S')
+        filename = f"{timestamp}_output.wav"
+        out_path = os.path.join(OUTPUT_DIR, filename)
+        with open(out_path, 'wb') as out:
+            out.write(resp.content)
+
+        output_url = f"/media/output/{filename}"
+        return jsonify({"status": "success", "output_path": output_url})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 # 4. 人机对话页面
 @app.route('/chat', methods=['GET', 'POST'])
