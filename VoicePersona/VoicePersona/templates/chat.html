@@ -10,220 +10,162 @@
 <body>
     <div class="main-content" style="position:relative;min-height:600px;">
         <div class="left-preview">
-            <!-- 音频预览盒子（在视频盒子上方） -->
             <div class="audio-box" style="margin-bottom: 12px;">
-                <audio id="previewAudio" class="preview-audio" controls autoplay style="width:100%;"></audio>
+                <audio id="previewAudio" class="preview-audio" controls style="width:100%;"></audio>
             </div>
             <div class="video-box">
-                <video id="previewVideo" class="preview-video" controls autoplay muted loop style="width:100%; height:auto; background:#000;"></video>
+                <video id="previewVideo" class="preview-video" controls loop muted style="width:100%; height:auto; background:#000;"></video>
             </div>
         </div>
-
         <div class="right-form">
             <form method="POST">
                 <div class="form-group">
                     <label>模型名称</label>
-                    <select>
-                        <option>VoicePersona</option>
+                    <p style="margin:6px 0;">Voice Persona</p>
+                </div>
+
+                <div class="form-group">
+                    <label>目标演讲者</label>
+                    <select id="targetSpeaker">
+                        <option value="obama">Obama</option>
+                        <option value="trump">Trump</option>
+                        <option value="achu">路人甲</option>
                     </select>
                 </div>
 
                 <div class="form-group">
-                    <label>模型权重路径</label>
-                    <input type="text" value="/SyncTalk/model/source_ep10">
-                </div>
-
-                <div class="form-group">
-                    <label>参考音频地址</label>
-                    <input type="text" value="/static/input.wav">
-                </div>
-
-                <div class="form-group">
-                    <label>语音克隆模型名称</label>
-                    <input type="text" value="Cosy Voice">
-                </div>
-
-                <div class="form-group">
-                    <label>目标文字 (文本框)</label>
-                    <input type="text" id="inputText" placeholder="请输入目标文本内容...">
-                </div>
-
-                <!-- 音频生成与预览相关控件 -->
-                <div class="form-group">
-                    <label>输出音频地址</label>
-                    <input type="text" id="outputWavePath" placeholder="例如：../output/YYMMDD_HHMMSS_output.wav">
-                </div>
-                <div style="margin-top: 8px;">
-                    <button type="button" id="generateAudioBtn" class="submit-btn">生成音频</button>
-                </div>
-
-                <!-- 视频预览和下一步用到的控件（与音频分离） -->
-                <div class="form-group" style="margin-top: 16px;">
-                    <label>输出视频地址</label>
-                    <input type="text" id="outputVideoPath" value="{{ url_for('static', filename='videos/Trump.mp4') }}" placeholder="例如：/static/videos/output.mp4">
-                </div>
-                <div style="margin-top: 8px;">
-                    <button type="submit" id="generateBtn" class="submit-btn">生成视频</button>
-                </div>
-                
-                <div class="chat-section" style="margin-top: 16px;">
                     <label>对话</label>
-                    <input type="text" id="chatInput" placeholder="请输入您的消息..." style="flex:1;padding:8px;border-radius:4px;border:1px solid #ccc;">
-                    <button type="button" id="sendChatBtn" class="submit-btn" style="height:38px;min-width:80px;">发送</button>
+                    <div class="chat-section" style="display:grid; grid-template-columns: 1fr auto; gap:8px; align-items:center;">
+                        <input type="text" id="chatInput" placeholder="请输入您的消息..." style="width:100%; padding:8px; border-radius:4px; border:1px solid #ccc;">
+                        <button type="button" id="sendChatBtn" class="submit-btn" style="padding:8px 12px; min-width:64px;">发送</button>
+                    </div>
+                    <div id="chatMessages" style="margin-top: 8px; height: 160px; overflow-y:auto; border: 1px solid #ccc; padding: 10px; background: #f9f9f9; border-radius: 4px;"></div>
                 </div>
 
-                <div id="chatMessages" style="
-                    margin-top: 12px;
-                    height: 200px;
-                    overflow-y: auto;
-                    border: 1px solid #ccc;
-                    padding: 10px;
-                    background: #f9f9f9;
-                    border-radius: 4px;
-                "></div>
-            </div>
+                <div class="form-group">
+                    <label>合成文本（使用最近一次 AI 回复）</label>
+                    <textarea id="synthesisText" rows="3" placeholder="在此粘贴要合成的文本..." style="width:100%;"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <div style="margin-top: 8px; margin-bottom: 16px;">
+                        <button type="button" id="generateAudioBtn" class="submit-btn" style="width:100%;">生成音频</button>
+                    </div>
+                    <label>输出音频地址</label>
+                    <input type="text" id="outputWavePath" placeholder="例如：/media/output/YYMMDD_HHMMSS_output.wav">
+                </div>
+
+                <div class="form-group">
+                    <label>输出视频地址</label>
+                    <input type="text" id="outputVideoPath" placeholder="例如：/media/dataset/dataset/Obama/logs/Obama_com/test_aud_rst/result.avi">
+                    <div style="margin-top: 8px; display:flex; gap:8px;">
+                        <button type="button" id="generateVideoBtn" class="submit-btn" style="flex:1;">生成视频</button>
+                        <button type="button" id="playVideoBtn" class="submit-btn" style="flex:1;">播放视频</button>
+                    </div>
+                </div>
             </form>
         </div>
     </div>
+
     <script>
         (function() {
-            const audio = document.getElementById('previewAudio');
-            const video = document.getElementById('previewVideo');
-            const outputWaveInput = document.getElementById('outputWavePath');
-            const outputVideoInput = document.getElementById('outputVideoPath');
-            const generateAudioBtn = document.getElementById('generateAudioBtn');
-            const generateBtn = document.getElementById('generateBtn');
-            const inputTextEl = document.getElementById('inputText');
+            const previewAudio = document.getElementById('previewAudio');
+            const previewVideo = document.getElementById('previewVideo');
+            const targetSpeakerEl = document.getElementById('targetSpeaker');
+            const chatMessages = document.getElementById('chatMessages');
             const chatInput = document.getElementById('chatInput');
             const sendChatBtn = document.getElementById('sendChatBtn');
+            const synthesisTextEl = document.getElementById('synthesisText');
+            const outputWavePathEl = document.getElementById('outputWavePath');
+            const outputVideoPathEl = document.getElementById('outputVideoPath');
+            const generateAudioBtn = document.getElementById('generateAudioBtn');
+            const generateVideoBtn = document.getElementById('generateVideoBtn');
+            const playVideoBtn = document.getElementById('playVideoBtn');
+
+            let speakerProfiles = null;
+            let lastAiReply = '';
 
             function appendMessage(sender, text) {
-                const messagesContainer = document.getElementById('chatMessages');
                 const messageEl = document.createElement('div');
                 messageEl.style.marginBottom = '8px';
                 messageEl.style.padding = '6px 10px';
                 messageEl.style.borderRadius = '8px';
                 messageEl.style.maxWidth = '80%';
-
-                if (sender === 'user') {
-                    messageEl.style.backgroundColor = '#d1e7ff';
-                    messageEl.style.marginLeft = 'auto';
-                    messageEl.style.textAlign = 'right';
-                } else if (sender === 'ai') {
-                    messageEl.style.backgroundColor = '#e2e3e5';
-                    messageEl.style.marginRight = 'auto';
-                    messageEl.style.textAlign = 'left';
-                }
-
+                if (sender === 'user') { messageEl.style.backgroundColor = '#d1e7ff'; messageEl.style.marginLeft = 'auto'; messageEl.style.textAlign = 'right'; }
+                else { messageEl.style.backgroundColor = '#e2e3e5'; messageEl.style.marginRight = 'auto'; messageEl.style.textAlign = 'left'; }
                 messageEl.textContent = text;
-                messagesContainer.appendChild(messageEl);
-
-                // 自动滚动到底部
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                chatMessages.appendChild(messageEl);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
             }
+
+            function toMediaUrl(projectRelativePath) {
+                if (!projectRelativePath) return '';
+                const trimmed = projectRelativePath.replace(/^\.\//, '');
+                if (trimmed.startsWith('asset/')) { return '/media/' + trimmed; }
+                return projectRelativePath;
+            }
+            function setAudioSrc(src) { if (!src) return; previewAudio.src = src; previewAudio.load(); }
+            function setVideoSrc(src) { if (!src) return; previewVideo.src = src; previewVideo.load(); }
+
+            function updateFromSpeaker() {
+                if (!speakerProfiles) return;
+                const key = (targetSpeakerEl.value || '').toLowerCase();
+                const profile = speakerProfiles[key];
+                if (!profile) return;
+                // Default the video path from profile and load preview
+                if (profile.video) { const v = toMediaUrl(profile.video); outputVideoPathEl.value = v; setVideoSrc(v); }
+                // Optionally default audio too if desired
+                if (profile.wav) { const a = toMediaUrl(profile.wav); setAudioSrc(a); }
+            }
+
+            fetch('/config/speakers')
+                .then(res => res.json())
+                .then(data => { speakerProfiles = data || {}; updateFromSpeaker(); })
+                .catch(err => console.error('Failed to load speaker profiles', err));
+            targetSpeakerEl.addEventListener('change', updateFromSpeaker);
+
             sendChatBtn.addEventListener('click', function() {
-                const message = chatInput.value.trim();
-                if (!message) {
-                    alert('请输入聊天内容');
-                    return;
-                }
-
-                // 先显示用户消息
+                const message = (chatInput.value || '').trim();
+                if (!message) { alert('请输入聊天内容'); return; }
                 appendMessage('user', message);
-
-                // 清空输入框（可选：立即清空 or 等回复后再清空）
                 chatInput.value = '';
-
-                // 发送请求
                 fetch("{{ url_for('ai_response') }}", {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: new URLSearchParams({ message: message })
+                    method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ message })
                 })
                 .then(res => res.json())
                 .then(data => {
-                    if (data && data.reply) {
-                        appendMessage('ai', data.reply);
-                    } else {
-                        appendMessage('ai', '抱歉，我无法回答这个问题。');
-                    }
+                    const reply = (data && data.reply) ? data.reply : '抱歉，我无法回答这个问题。';
+                    lastAiReply = reply; appendMessage('ai', reply); synthesisTextEl.value = reply;
                 })
-                .catch(err => {
-                    console.error('聊天请求失败:', err);
-                    appendMessage('ai', '网络错误，请稍后重试。');
-                });
-            });
-            function setAudioSrc(src) {
-                if (!src) return;
-                audio.src = src;
-                audio.load();
-                const playPromise = audio.play();
-                if (playPromise && typeof playPromise.then === 'function') {
-                    playPromise.catch(() => {/* user gesture may be required */});
-                }
-            }
-
-            function setVideoSrc(src) {
-                if (!src) return;
-                video.src = src;
-                video.load();
-                const playPromise = video.play();
-                if (playPromise && typeof playPromise.then === 'function') {
-                    playPromise.catch(() => {/* ignore autoplay restrictions */});
-                }
-            }
-
-            // Initialize default preview media
-            setVideoSrc(outputVideoInput.value);
-            // Optional: if you want a default audio, set it here (left empty by default)
-            if (outputWaveInput.value) {
-                setAudioSrc(outputWaveInput.value);
-            }
-
-            // Manual change handlers
-            outputVideoInput.addEventListener('change', function() {
-                setVideoSrc(this.value);
-            });
-            outputWaveInput.addEventListener('change', function() {
-                setAudioSrc(this.value);
+                .catch(() => appendMessage('ai', '网络错误，请稍后重试。'));
             });
 
-            // Generate Audio button handler
             generateAudioBtn.addEventListener('click', function() {
-                const inputText = (inputTextEl.value || '').trim();
-                if (!inputText) {
-                    alert('请输入要合成的文本');
-                    return;
-                }
-                // Call backend to generate audio via TTS
+                const text = (synthesisTextEl.value || '').trim(); const speaker = (targetSpeakerEl.value || '').trim();
+                if (!text) { alert('请输入要合成的文本'); return; } if (!speaker) { alert('请选择目标演讲者'); return; }
                 fetch("{{ url_for('generate') }}", {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: new URLSearchParams({ input_text: inputText })
+                    method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ input_text: text, target_speaker: speaker })
                 })
                 .then(res => res.json())
-                .then(data => {
-                    if (data && data.status === 'success' && data.output_path) {
-                        // Update audio preview and text box with generated path
-                        outputWaveInput.value = data.output_path;
-                        setAudioSrc(data.output_path);
-                    } else {
-                        alert(data && data.message ? data.message : '音频生成失败');
-                    }
-                })
-                .catch(err => {
-                    console.error(err);
-                    alert('音频生成失败');
-                });
+                .then(data => { if (data && data.status === 'success' && data.output_path) { outputWavePathEl.value = data.output_path; setAudioSrc(data.output_path); } else { alert(data && data.message ? data.message : '音频生成失败'); } })
+                .catch(() => alert('音频生成失败'));
             });
 
-            // Generate Video button: only reload the video from its path for now
-            generateBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                setVideoSrc(outputVideoInput.value);
+            generateVideoBtn.addEventListener('click', function() {
+                const audioPath = (outputWavePathEl.value || '').trim(); const speaker = (targetSpeakerEl.value || '').trim();
+                if (!audioPath) { alert('请先生成或填写音频地址'); return; } if (!speaker) { alert('请选择目标演讲者'); return; }
+                fetch('/api/extract_ds_features', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ audio_path: audioPath }) })
+                .then(res => res.json())
+                .then(data => { if (!(data && data.status === 'success' && data.npy_path)) { throw new Error(data && data.message ? data.message : '特征提取失败'); }
+                    return fetch('/api/generate_video', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ speaker: speaker, npy_path: data.npy_path }) });
+                })
+                .then(res => res.json())
+                .then(data => { if (data && data.status === 'success' && data.video_path) { outputVideoPathEl.value = data.video_path; setVideoSrc(data.video_path); } else { alert(data && data.message ? data.message : '视频生成失败'); } })
+                .catch(err => { console.error(err); alert('视频生成失败'); });
             });
+            playVideoBtn.addEventListener('click', function() { const src = (outputVideoPathEl.value || '').trim(); if (!src) { alert('请先填写输出视频地址'); return; } setVideoSrc(src); previewVideo.play().catch(() => {}); });
         })();
     </script>
 </body>
 
-</html>
+</html></html>

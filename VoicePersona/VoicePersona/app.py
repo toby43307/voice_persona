@@ -424,11 +424,16 @@ def ai_response():
     try:
         response = client.chat.completions.create(
             model="deepseek-chat",
-            messages=[{"role": "user", "content": user_message}],
+            messages=[
+                {"role": "system", "content": "Limit your reply to 50 characters maximum."},
+                {"role": "user", "content": user_message}
+            ],
             temperature=0.7,
             max_tokens=512
         )
         ai_reply = response.choices[0].message.content.strip()
+        # Hard-limit to 50 characters server-side
+        #ai_reply = ai_reply[:50]
         return jsonify({"reply": ai_reply})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
