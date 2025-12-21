@@ -1,0 +1,30 @@
+.git
+.gitignore
+__pycache__/
+*.pyc
+*.pyo
+*.log
+
+# Python envs
+.conda/
+.venv/
+env/
+
+# ML artifacts (adjust names!)
+models/
+checkpoints/
+weights/
+data/
+datasets/
+outputs/
+cache/
+
+# huge files
+output/
+pretrained_models/
+third_party/
+dataset/
+
+# OS junk
+Thumbs.db
+.DS_Store

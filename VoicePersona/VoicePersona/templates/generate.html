@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <meta charset="UTF-8">
+    <title>视频生成界面</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style_app.css') }}">
+</head>
+
+<body>
+    <div class="main-content">
+        <div class="left-preview">
+            <!-- 音频预览盒子（在视频盒子上方） -->
+            <div class="audio-box" style="margin-bottom: 12px;">
+                <audio id="previewAudio" class="preview-audio" controls style="width:100%;"></audio>
+            </div>
+            <div class="video-box">
+                <video id="previewVideo" class="preview-video" controls loop style="width:100%; height:auto; background:#000;"></video>
+            </div>
+        </div>
+
+        <div class="right-form">
+            <form method="POST">
+                <div class="form-group">
+                    <label>模型名称</label>
+                    <select>
+                        <option>VoicePersona</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>语音克隆模型名称</label>
+                    <input type="text" value="Cosy Voice">
+                </div>
+
+                <div class="form-group">
+                    <label>目标演讲者</label>
+                    <select id="targetSpeaker">
+                        <option value="Obama">Obama</option>
+                        <option value="Trump">Trump</option>
+                        <option value="Achu">路人甲</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>参考音频地址</label>
+                    <input type="text" id="referenceAudioPath" value="/static/input.wav">
+                </div>
+
+                <div class="form-group">
+                    <label>目标文字 (文本框)</label>
+                    <input type="text" id="inputText" placeholder="请输入目标文本内容...">
+                </div>
+
+                <!-- 音频生成与预览相关控件 -->
+                <div class="form-group">
+                    <label>输出音频地址</label>
+                    <input type="text" id="outputWavePath" placeholder="例如：../output/YYMMDD_HHMMSS_output.wav">
+                </div>
+                <div style="margin-top: 8px;">
+                    <button type="button" id="generateAudioBtn" class="submit-btn">生成音频</button>
+                </div>
+
+                <!-- 视频预览和下一步用到的控件（与音频分离） -->
+                <div class="form-group" style="margin-top: 16px;">
+                    <label>输出视频地址</label>
+                    <input type="text" id="outputVideoPath" placeholder="例如：/static/videos/output.mp4">
+                </div>
+                <div style="margin-top: 8px;">
+                    <button type="submit" id="generateBtn" class="submit-btn">生成视频</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            const audio = document.getElementById('previewAudio');
+            const video = document.getElementById('previewVideo');
+            const outputWaveInput = document.getElementById('outputWavePath');
+            const outputVideoInput = document.getElementById('outputVideoPath');
+            const generateAudioBtn = document.getElementById('generateAudioBtn');
+            const generateBtn = document.getElementById('generateBtn');
+            const inputTextEl = document.getElementById('inputText');
+            const targetSpeakerEl = document.getElementById('targetSpeaker');
+            const referenceAudioPathEl = document.getElementById('referenceAudioPath');
+
+            let speakerProfiles = null;
+
+            function toMediaUrl(projectRelativePath) {
+                // Convert paths like './asset/Obama_1st_15s.wav' or './asset/Obama.mp4' to '/media/asset/...'
+                if (!projectRelativePath) return '';
+                const trimmed = projectRelativePath.replace(/^\.\//, '');
+                if (trimmed.startsWith('asset/')) {
+                    return '/media/' + trimmed; // served by /media/asset/<file>
+                }
+                return projectRelativePath;
+            }
+
+            function setAudioSrc(src) {
+                if (!src) return;
+                audio.src = src;
+                audio.load();
+            }
+
+            function setVideoSrc(src) {
+                if (!src) return;
+                video.src = src;
+                video.load();
+            }
+
+            function updateReferenceMedia() {
+                if (!speakerProfiles) return;
+                const key = (targetSpeakerEl.value || '').toLowerCase();
+                const profile = speakerProfiles[key];
+                if (!profile) return;
+
+                if (profile.wav) {
+                    const audioUrl = toMediaUrl(profile.wav);
+                    referenceAudioPathEl.value = audioUrl;
+                    setAudioSrc(audioUrl);
+                }
+                if (profile.video) {
+                    const videoUrl = toMediaUrl(profile.video);
+                    outputVideoInput.value = videoUrl;
+                    setVideoSrc(videoUrl);
+                }
+            }
+
+            // Load speaker profiles JSON and set initial reference audio/video based on current selection
+            fetch('/config/speakers')
+                .then(res => res.json())
+                .then(data => {
+                    speakerProfiles = data || {};
+                    updateReferenceMedia();
+                })
+                .catch(err => console.error('Failed to load speaker profiles', err));
+
+            // Handlers
+            targetSpeakerEl.addEventListener('change', updateReferenceMedia);
+            outputVideoInput.addEventListener('change', function() { setVideoSrc(this.value); });
+            outputWaveInput.addEventListener('change', function() { setAudioSrc(this.value); });
+
+            // Generate Audio button handler
+            generateAudioBtn.addEventListener('click', function() {
+                const inputText = (inputTextEl.value || '').trim();
+                const targetSpeaker = (targetSpeakerEl.value || '').trim();
+                if (!inputText) {
+                    alert('请输入要合成的文本');
+                    return;
+                }
+                if (!targetSpeaker) {
+                    alert('请选择目标演讲者');
+                    return;
+                }
+                // Call backend to generate audio via TTS
+                fetch("{{ url_for('generate') }}", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({ input_text: inputText, target_speaker: targetSpeaker })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data && data.status === 'success' && data.output_path) {
+                        // Replace reference audio with generated output
+                        outputWaveInput.value = data.output_path;
+                        setAudioSrc(data.output_path);
+                    } else {
+                        alert(data && data.message ? data.message : '音频生成失败');
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert('音频生成失败');
+                });
+            });
+
+            // Generate Video button: only reload the video from its path for now
+            generateBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                setVideoSrc(outputVideoInput.value);
+            });
+        })();
+    </script>
+</body>
+
+</html>

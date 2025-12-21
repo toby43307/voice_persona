@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <meta charset="UTF-8">
+    <title>模型训练界面</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style_app.css') }}">
+</head>
+
+<body>
+    <div class="main-content" style="position:relative;min-height:600px;">
+        <div class="left-preview">
+            <!--<div class="audio-box" style="margin-bottom: 12px;">
+                <audio id="previewAudio" class="preview-audio" controls style="width:100%;"></audio>
+            </div>-->
+            <div class="video-box">
+                <video id="previewVideo" class="preview-video" controls loop style="width:100%; height:auto; background:#000;"></video>
+            </div>
+        </div>
+
+        <div class="right-form">
+            <form method="POST">
+                <div class="form-group">
+                    <label>模型名称</label>
+                    <p style="margin:6px 0;">Voice Persona</p>
+                </div>
+
+                <div class="form-group">
+                    <label>训练目标演讲者</label>
+                    <select id="targetSpeaker">
+                        <option value="obama">Obama</option>
+                        <option value="trump">Trump</option>
+                        <option value="achu">路人甲</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>训练数据文件夹</label>
+                    <input type="text" id="dataFolderInput" placeholder="例如：dataset/Obama" value="dataset/Obama">
+                </div>
+
+                <!-- 数据处理步骤选择 -->
+                <div class="form-group">
+                    <label>数据处理步骤（Step 0-7）</label>
+                    <div style="display:flex; gap:12px; align-items:flex-start; margin:6px 0;">
+                        <div style="flex:1; min-width:0;">
+                            <div style="margin-bottom:8px; font-weight:bold;">选项</div>
+                            <select id="processStep" style="width:100%;">
+                                <option value="0">Step 0</option>
+                                <option value="1">Step 1</option>
+                                <option value="2">Step 2</option>
+                                <option value="3">Step 3</option>
+                                <option value="4">Step 4</option>
+                                <option value="5">Step 5</option>
+                                <option value="6">Step 6</option>
+                                <option value="7">Step 7</option>
+                            </select>
+                        </div>
+                        <div style="flex:1; min-width:0;">
+                            <div style="margin-bottom:8px; font-weight:bold;">步骤说明</div>
+                            <span id="processDesc" style="display:block; font-size:0.95em; color:#555; padding:8px; border:1px solid #ddd; border-radius:6px; background:#fafafa;">--- Step0: extract deepspeech feature ---</span>
+                        </div>
+                    </div>
+
+                    <div style="margin-top:12px;background:#0f1520;border:1px solid #263238;border-radius:6px;padding:10px;color:#e0e0e0;">
+                        <div style="font-weight:bold;margin-bottom:6px;">命令</div>
+                        <pre id="processCmd" style="white-space:pre-wrap;margin:0;">python data_util/process_data.py --id=$1 --step=0</pre>
+                    </div>
+
+                    <div style="margin-top:12px;">
+                        <button type="button" id="processDataBtn" class="submit-btn" style="width:100%;">Process Data</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>训练项选择（二选一）</label>
+                    <div style="margin:6px 0; display:flex; gap:12px; align-items:center;">
+                        <label><input type="radio" name="trainType" id="trainHead" value="head" checked> Train Head-NeRF</label>
+                        <label><input type="radio" name="trainType" id="trainTorso" value="torso"> Train Torso-NeRF</label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>命令预览</label>
+                    <div id="commandsContainer" style="background:#0f1520;border:1px solid #263238;border-radius:6px;padding:10px;color:#e0e0e0;">
+                        <div id="cmdTitle" style="margin-bottom:6px;font-weight:bold;">Head-NeRF</div>
+                        <pre id="cmdPreview" style="white-space:pre-wrap;margin:0;">python NeRFs/HeadNeRF/run_nerf.py --config dataset/$id/HeadNeRF_config.txt</pre>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>现有检查点</label>
+                    <div style="display:flex; gap:12px;">
+                        <div style="flex:1;">
+                            <div style="margin-bottom:4px;font-weight:bold;">Head-NeRF</div>
+                            <textarea id="headCkptList" rows="6" style="width:100%; resize:vertical; overflow:auto;" placeholder="例如：\n190000_head.tar\n200000_head.tar\n..."></textarea>
+                        </div>
+                        <div style="flex:1;">
+                            <div style="margin-bottom:4px;font-weight:bold;">Torso-NeRF</div>
+                            <textarea id="torsoCkptList" rows="6" style="width:100%; resize:vertical; overflow:auto;" placeholder="例如：\n190000_body.tar\n200000_body.tar\n..."></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 20px;">
+                    <button type="submit" class="submit-btn">Train</button>
+                </div>
+                <div id="trainStatus" style="margin-top:18px;color:#1976d2;font-weight:bold;"></div>
+            </form>
+        </div>
+    </div>
+
+<script>
+    // 允许设置数据集文件夹、选择训练说话人，支持数据处理步骤执行，并在二选一训练项下显示相应命令，同时显示现有检查点（文件名列表）。
+    (function() {
+        const form = document.querySelector('.right-form form');
+        const video = document.getElementById('previewVideo');
+        const trainStatus = document.getElementById('trainStatus');
+        const dataFolderInput = document.getElementById('dataFolderInput');
+        const cmdPreviewEl = document.getElementById('cmdPreview');
+        const cmdTitleEl = document.getElementById('cmdTitle');
+        const targetSpeakerEl = document.getElementById('targetSpeaker');
+        const trainHeadEl = document.getElementById('trainHead');
+        const trainTorsoEl = document.getElementById('trainTorso');
+        const headCkptList = document.getElementById('headCkptList');
+        const torsoCkptList = document.getElementById('torsoCkptList');
+        const processStepEl = document.getElementById('processStep');
+        const processDescEl = document.getElementById('processDesc');
+        const processCmdEl = document.getElementById('processCmd');
+        const processDataBtn = document.getElementById('processDataBtn');
+
+        let speakerProfiles = null;
+
+        const tmplHead = 'python NeRFs/HeadNeRF/run_nerf.py --config dataset/$id/HeadNeRF_config.txt';
+        const tmplTorso = 'python NeRFs/TorsoNeRF/run_nerf.py --config dataset/$id/TorsoNeRF_config.txt';
+        const stepDescs = {
+            0: ' Extract deepspeech feature',
+            1: ' Extract images from vids',
+            2: ' Detect landmarks',
+            3: ' Face parsing',
+            4: ' Extract background image',
+            5: ' Save training images',
+            6: ' Estimate head pose',
+            7: ' Save transform param'
+        };
+
+        function toMediaUrl(projectRelativePath) {
+            if (!projectRelativePath) return '';
+            const trimmed = projectRelativePath.replace(/^\.\//, '');
+            if (trimmed.startsWith('asset/')) {
+                return '/media/' + trimmed; // served by /media/asset/<file>
+            }
+            return projectRelativePath;
+        }
+
+        function renderCommands() {
+            const idPath = (dataFolderInput.value || '').trim() || '$id';
+            const replaceAll = (s) => s.replaceAll('$id', idPath);
+            if (trainHeadEl.checked) {
+                cmdTitleEl.textContent = 'Head-NeRF';
+                cmdPreviewEl.textContent = replaceAll(tmplHead);
+            } else {
+                cmdTitleEl.textContent = 'Torso-NeRF';
+                cmdPreviewEl.textContent = replaceAll(tmplTorso);
+            }
+        }
+
+        function renderProcessCmd() {
+            const step = parseInt(processStepEl.value, 10) || 0;
+            const speakerId = (targetSpeakerEl.value || '').trim() || '$1';
+            processDescEl.textContent = stepDescs[step];
+            processCmdEl.textContent = `python data_util/process_data.py --id=${speakerId} --step=${step}`;
+        }
+
+        function updateReferenceVideo(fromSpeakerChange = false) {
+            if (!speakerProfiles) return;
+            const key = (targetSpeakerEl.value || '').toLowerCase();
+            const profile = speakerProfiles[key];
+            if (profile && profile.video) {
+                const videoUrl = toMediaUrl(profile.video);
+                video.src = videoUrl;
+                video.load();
+            }
+            if (fromSpeakerChange) {
+                const capitalized = key.charAt(0).toUpperCase() + key.slice(1);
+                dataFolderInput.value = `dataset/${capitalized}`;
+                renderCommands();
+                updateCheckpoints();
+                renderProcessCmd();
+            }
+        }
+
+        function basename(path) {
+            const parts = (path || '').split('/');
+            return parts[parts.length - 1] || '';
+        }
+
+        function updateCheckpoints() {
+            const datasetPath = (dataFolderInput.value || '').trim();
+            if (!datasetPath) { headCkptList.value = ''; torsoCkptList.value=''; return; }
+            fetch(`/api/checkpoints?dataset=${encodeURIComponent(datasetPath)}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data && !data.error) {
+                        const headNames = Array.isArray(data.head) ? data.head.map(basename) : [];
+                        const torsoNames = Array.isArray(data.torso) ? data.torso.map(basename) : [];
+                        headCkptList.value = headNames.join('\n');
+                        torsoCkptList.value = torsoNames.join('\n');
+                    } else {
+                        headCkptList.value = '';
+                        torsoCkptList.value = '';
+                    }
+                })
+                .catch(() => { headCkptList.value=''; torsoCkptList.value=''; });
+        }
+
+        // Load speaker profiles JSON and set initial video based on selected speaker
+        fetch('/config/speakers')
+            .then(res => res.json())
+            .then(data => {
+                speakerProfiles = data || {};
+                updateReferenceVideo(false);
+                renderCommands();
+                updateCheckpoints();
+                renderProcessCmd();
+            })
+            .catch(err => console.error('Failed to load speaker profiles', err));
+
+        // Change handlers
+        targetSpeakerEl.addEventListener('change', function() { updateReferenceVideo(true); });
+        trainHeadEl.addEventListener('change', renderCommands);
+        trainTorsoEl.addEventListener('change', renderCommands);
+        dataFolderInput.addEventListener('input', function(){ renderCommands(); updateCheckpoints(); });
+        processStepEl.addEventListener('change', renderProcessCmd);
+
+        processDataBtn.addEventListener('click', function() {
+            const step = (processStepEl.value || '0');
+            const speakerId = (targetSpeakerEl.value || '').trim();
+            if (!speakerId) { alert('请选择演讲者'); return; }
+            fetch('/api/process_data', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ speaker: speakerId, step: step })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.status === 'success') {
+                    alert('数据处理完成');
+                } else {
+                    alert(data && data.message ? data.message : '数据处理失败');
+                }
+            })
+            .catch(() => alert('数据处理失败'));
+        });
+
+        // 拦截表单提交，点击Training按钮时不跳转，仅提示
+        if (form && trainStatus) {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                trainStatus.textContent = '训练中...';
+            });
+        }
+    })();
+</script>
+
+</html>
