@@ -26,11 +26,7 @@
 
                 <div class="form-group">
                     <label>目标演讲者</label>
-                    <select id="targetSpeaker">
-                        <option value="obama">Obama</option>
-                        <option value="trump">Trump</option>
-                        <option value="achu">路人甲</option>
-                    </select>
+                    <select id="targetSpeaker"></select>
                 </div>
 
                 <div class="form-group">
@@ -57,7 +53,7 @@
 
                 <div class="form-group">
                     <label>输出视频地址</label>
-                    <input type="text" id="outputVideoPath" placeholder="例如：/media/dataset/dataset/Obama/logs/Obama_com/test_aud_rst/result.avi">
+                    <input type="text" id="outputVideoPath" placeholder="例如：/media/asset/Obama.mp4 或 /media/output/result.mp4">
                     <div style="margin-top: 8px; display:flex; gap:8px;">
                         <button type="button" id="generateVideoBtn" class="submit-btn" style="flex:1;">生成视频</button>
                         <button type="button" id="playVideoBtn" class="submit-btn" style="flex:1;">播放视频</button>
@@ -84,6 +80,7 @@
 
             let speakerProfiles = null;
             let lastAiReply = '';
+            let hasGeneratedVideo = false; // switch to /media/output/result.mp4 after generation
 
             function appendMessage(sender, text) {
                 const messageEl = document.createElement('div');
@@ -106,23 +103,54 @@
             }
             function setAudioSrc(src) { if (!src) return; previewAudio.src = src; previewAudio.load(); }
             function setVideoSrc(src) { if (!src) return; previewVideo.src = src; previewVideo.load(); }
+            function capitalizeFirst(s) { s = (s || '').toString(); return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
 
-            function updateFromSpeaker() {
+            function populateSpeakers() {
+                const keys = Object.keys(speakerProfiles || {});
+                targetSpeakerEl.innerHTML = '';
+                keys.forEach(k => {
+                    const opt = document.createElement('option');
+                    const keyLower = k.toLowerCase();
+                    opt.value = keyLower;
+                    opt.textContent = capitalizeFirst(keyLower);
+                    targetSpeakerEl.appendChild(opt);
+                });
+                if (!targetSpeakerEl.value) {
+                    const firstOpt = targetSpeakerEl.querySelector('option');
+                    if (firstOpt) targetSpeakerEl.value = firstOpt.value;
+                }
+            }
+
+            function setSpeakerPreviewVideo() {
+                if (!speakerProfiles) return;
+                const key = (targetSpeakerEl.value || '').toLowerCase();
+                const profile = speakerProfiles[key];
+                if (!profile || !profile.video) return;
+                const v = toMediaUrl(profile.video);
+                outputVideoPathEl.value = v;
+                setVideoSrc(v);
+            }
+
+            function updateFromSpeaker(resetVideo) {
                 if (!speakerProfiles) return;
                 const key = (targetSpeakerEl.value || '').toLowerCase();
                 const profile = speakerProfiles[key];
                 if (!profile) return;
-                // Default the video path from profile and load preview
-                if (profile.video) { const v = toMediaUrl(profile.video); outputVideoPathEl.value = v; setVideoSrc(v); }
-                // Optionally default audio too if desired
                 if (profile.wav) { const a = toMediaUrl(profile.wav); setAudioSrc(a); }
+                if (resetVideo) { hasGeneratedVideo = false; setSpeakerPreviewVideo(); }
             }
 
+            // Populate speakers after /config/speakers loads
             fetch('/config/speakers')
                 .then(res => res.json())
-                .then(data => { speakerProfiles = data || {}; updateFromSpeaker(); })
+                .then(data => {
+                    speakerProfiles = data || {};
+                    populateSpeakers();
+                    setSpeakerPreviewVideo();
+                    updateFromSpeaker(false);
+                })
                 .catch(err => console.error('Failed to load speaker profiles', err));
-            targetSpeakerEl.addEventListener('change', updateFromSpeaker);
+            targetSpeakerEl.addEventListener('change', function(){ updateFromSpeaker(true); });
 
             sendChatBtn.addEventListener('click', function() {
                 const message = (chatInput.value || '').trim();
@@ -160,7 +188,7 @@
                     return fetch('/api/generate_video', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ speaker: speaker, npy_path: data.npy_path }) });
                 })
                 .then(res => res.json())
-                .then(data => { if (data && data.status === 'success' && data.video_path) { outputVideoPathEl.value = data.video_path; setVideoSrc(data.video_path); } else { alert(data && data.message ? data.message : '视频生成失败'); } })
+                .then(data => { if (data && data.status === 'success' && data.video_path) { hasGeneratedVideo = true; outputVideoPathEl.value = data.video_path; setVideoSrc(data.video_path); } else { alert(data && data.message ? data.message : '视频生成失败'); } })
                 .catch(err => { console.error(err); alert('视频生成失败'); });
             });
             playVideoBtn.addEventListener('click', function() { const src = (outputVideoPathEl.value || '').trim(); if (!src) { alert('请先填写输出视频地址'); return; } setVideoSrc(src); previewVideo.play().catch(() => {}); });
@@ -168,4 +196,4 @@
     </script>
 </body>
 
-</html></html>
+</html>

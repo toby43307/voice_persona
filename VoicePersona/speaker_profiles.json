@@ -13,5 +13,10 @@
     "wav": "./asset/achu.wav",
     "sample_text": "This is a test sample used for conditioning the voice cloning model for the target speaker.",
     "video": "./asset/achu.mp4"
+  },
+  "路人甲": {
+    "wav": "./asset/achu.wav",
+    "sample_text": "This is a test sample used for conditioning the voice cloning model for the target speaker.",
+    "video": "./asset/achu.mp4"
   }
 }

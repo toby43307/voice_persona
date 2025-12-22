@@ -35,11 +35,7 @@
 
                 <div class="form-group">
                     <label>目标演讲者</label>
-                    <select id="targetSpeaker">
-                        <option value="obama">Obama</option>
-                        <option value="trump">Trump</option>
-                        <option value="achu">路人甲</option>
-                    </select>
+                    <select id="targetSpeaker"></select>
                 </div>
 
                 <div class="form-group">
@@ -90,7 +86,6 @@
             const referenceAudioPathEl = document.getElementById('referenceAudioPath');
 
             let speakerProfiles = null;
-            let hasGeneratedVideo = false; // becomes true after we set /media/output/result.mp4
 
             function toMediaUrl(projectRelativePath) {
                 // Convert paths like './asset/Obama_1st_15s.wav' or './asset/Obama.mp4' to '/media/asset/...'
@@ -114,46 +109,65 @@
                 video.load();
             }
 
-            function setSpeakerPreviewVideo() {
-                if (!speakerProfiles) return;
-                const key = (targetSpeakerEl.value || '').toLowerCase();
-                const profile = speakerProfiles[key];
-                if (!profile || !profile.video) return;
-                const videoUrl = toMediaUrl(profile.video);
-                outputVideoInput.value = videoUrl; // default to speaker preview video
-                setVideoSrc(videoUrl);
+            function capitalizeFirst(s) {
+                s = (s || '').toString();
+                return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
             }
 
-            function updateReferenceMedia(resetVideo = false) {
+            function populateSpeakers() {
+                const keys = Object.keys(speakerProfiles || {});
+                targetSpeakerEl.innerHTML = '';
+                keys.forEach(k => {
+                    const opt = document.createElement('option');
+                    const keyLower = k.toLowerCase();
+                    opt.value = keyLower;
+                    opt.textContent = capitalizeFirst(keyLower);
+                    targetSpeakerEl.appendChild(opt);
+                });
+                if (!targetSpeakerEl.value) {
+                    const firstOpt = targetSpeakerEl.querySelector('option');
+                    if (firstOpt) targetSpeakerEl.value = firstOpt.value;
+                }
+            }
+
+            function updateReferenceVideo() {
                 if (!speakerProfiles) return;
                 const key = (targetSpeakerEl.value || '').toLowerCase();
                 const profile = speakerProfiles[key];
-                if (!profile) return;
+                if (profile && profile.video) {
+                    const videoUrl = toMediaUrl(profile.video);
+                    outputVideoInput.value = videoUrl;
+                    setVideoSrc(videoUrl);
+                }
+            }
 
-                if (profile.wav) {
+            function updateReferenceAudio() {
+                if (!speakerProfiles) return;
+                const key = (targetSpeakerEl.value || '').toLowerCase();
+                const profile = speakerProfiles[key];
+                if (profile && profile.wav) {
                     const audioUrl = toMediaUrl(profile.wav);
                     referenceAudioPathEl.value = audioUrl;
                     setAudioSrc(audioUrl);
                 }
-                if (resetVideo) {
-                    hasGeneratedVideo = false;
-                    setSpeakerPreviewVideo();
-                }
             }
 
-            // Load speaker profiles JSON and set initial reference audio/video based on current selection
+            function updateReferenceMedia(resetVideo = false) {
+                updateReferenceAudio();
+                if (resetVideo) updateReferenceVideo();
+            }
+
+            // Load speaker profiles JSON, populate speakers, and set initial video
             fetch('/config/speakers')
                 .then(res => res.json())
                 .then(data => {
                     speakerProfiles = data || {};
-                    // On first load, default to the speaker preview video
-                    setSpeakerPreviewVideo();
-                    // And set reference audio
-                    updateReferenceMedia(false);
+                    populateSpeakers();
+                    updateReferenceVideo();
+                    updateReferenceAudio();
                 })
                 .catch(err => console.error('Failed to load speaker profiles', err));
 
-            // Handlers
             targetSpeakerEl.addEventListener('change', function() { updateReferenceMedia(true); });
             outputVideoInput.addEventListener('change', function() { setVideoSrc(this.value); });
             outputWaveInput.addEventListener('change', function() { setAudioSrc(this.value); });
@@ -162,131 +176,48 @@
             generateAudioBtn.addEventListener('click', function() {
                 const inputText = (inputTextEl.value || '').trim();
                 const targetSpeaker = (targetSpeakerEl.value || '').trim();
-                if (!inputText) {
-                    alert('请输入要合成的文本');
-                    return;
-                }
-                if (!targetSpeaker) {
-                    alert('请选择目标演讲者');
-                    return;
-                }
-                // Call backend to generate audio via TTS
+                if (!inputText) { alert('请输入要合成的文本'); return; }
+                if (!targetSpeaker) { alert('请选择目标演讲者'); return; }
                 fetch("{{ url_for('generate') }}", {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: new URLSearchParams({ input_text: inputText, target_speaker: targetSpeaker })
+                    method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ input_text: inputText, target_speaker: targetSpeaker })
                 })
                 .then(res => res.json())
-                .then(data => {
-                    if (data && data.status === 'success' && data.output_path) {
-                        // Replace reference audio with generated output
-                        outputWaveInput.value = data.output_path;
-                        setAudioSrc(data.output_path);
-                    } else {
-                        alert(data && data.message ? data.message : '音频生成失败');
-                    }
-                })
-                .catch(err => {
-                    console.error(err);
-                    alert('音频生成失败');
-                });
+                .then(data => { if (data && data.status === 'success' && data.output_path) { outputWaveInput.value = data.output_path; setAudioSrc(data.output_path); } else { alert(data && data.message ? data.message : '音频生成失败'); } })
+                .catch(() => alert('音频生成失败'));
             });
 
             // Generate Audio button handler (Huawei Cloud TTS via remote API)
             generateAudioHuaweiBtn.addEventListener('click', function() {
                 const inputText = (inputTextEl.value || '').trim();
                 const targetSpeaker = (targetSpeakerEl.value || '').trim();
-                if (!inputText) {
-                    alert('请输入要合成的文本');
-                    return;
-                }
-                if (!targetSpeaker) {
-                    alert('请选择目标演讲者');
-                    return;
-                }
-
-                // Collect reference audio and sample_text from profiles
+                if (!inputText) { alert('请输入要合成的文本'); return; }
+                if (!targetSpeaker) { alert('请选择目标演讲者'); return; }
                 const key = (targetSpeakerEl.value || '').toLowerCase();
                 const profile = speakerProfiles ? speakerProfiles[key] : null;
                 const referenceText = profile && profile.sample_text ? profile.sample_text : '';
                 const referenceAudioPath = referenceAudioPathEl.value;
-                if (!referenceAudioPath) {
-                    alert('请先选择参考音频地址');
-                    return;
-                }
-
-                const params = new URLSearchParams({
-                    input_text: inputText,
-                    target_speaker: targetSpeaker,
-                    reference_audio_path: referenceAudioPath,
-                    reference_text: referenceText
-                });
-
-                fetch("{{ url_for('generate_huawei') }}", {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: params
-                })
+                if (!referenceAudioPath) { alert('请先选择参考音频地址'); return; }
+                const params = new URLSearchParams({ input_text: inputText, target_speaker: targetSpeaker, reference_audio_path: referenceAudioPath, reference_text: referenceText });
+                fetch("{{ url_for('generate_huawei') }}", { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params })
                 .then(res => res.json())
-                .then(data => {
-                    if (data && data.status === 'success' && data.output_path) {
-                        outputWaveInput.value = data.output_path;
-                        audio.src = data.output_path;
-                        audio.load();
-                    } else {
-                        alert(data && data.message ? data.message : '华为云音频生成失败');
-                    }
-                })
-                .catch(err => {
-                    console.error(err);
-                    alert('华为云音频生成失败');
-                });
+                .then(data => { if (data && data.status === 'success' && data.output_path) { outputWaveInput.value = data.output_path; audio.src = data.output_path; audio.load(); } else { alert(data && data.message ? data.message : '华为云音频生成失败'); } })
+                .catch(err => { console.error(err); alert('华为云音频生成失败'); });
             });
 
-            // Generate Video button: first extract DeepSpeech features from selected audio
+            // Generate Video button: first extract DeepSpeech features then generate MP4
             generateBtn.addEventListener('click', function(e) {
                 e.preventDefault();
                 const audioPath = (outputWaveInput.value || '').trim();
-                if (!audioPath) {
-                    alert('请先填写参考音频地址');
-                    return;
-                }
-                fetch('/api/extract_ds_features', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: new URLSearchParams({ audio_path: audioPath })
+                if (!audioPath) { alert('请先填写参考音频地址'); return; }
+                fetch('/api/extract_ds_features', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ audio_path: audioPath }) })
+                .then(res => res.json())
+                .then(data => { if (!(data && data.status === 'success' && data.npy_path)) { throw new Error(data && data.message ? data.message : '特征提取失败'); }
+                    const speaker = (targetSpeakerEl.value || '').trim().toLowerCase();
+                    return fetch('/api/generate_video', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ speaker: speaker, npy_path: data.npy_path }) });
                 })
                 .then(res => res.json())
-                .then(data => {
-                    if (data && data.status === 'success' && data.npy_path) {
-                        const speaker = (targetSpeakerEl.value || '').trim().toLowerCase();
-                        const npyPath = data.npy_path;
-                        return fetch('/api/generate_video', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                            body: new URLSearchParams({ speaker: speaker, npy_path: npyPath })
-                        });
-                    } else {
-                        alert(data && data.message ? data.message : '特征提取失败');
-                        throw new Error('extract failed');
-                    }
-                })
-                .then(res => res.json())
-                .then(data => {
-                    if (data && data.status === 'success' && data.video_path) {
-                        // After video generation, always point to /media/output/result.mp4
-                        hasGeneratedVideo = true;
-                        outputVideoInput.value = data.video_path;
-                        setVideoSrc(data.video_path);
-                    } else {
-                        alert(data && data.message ? data.message : '视频生成失败');
-                    }
-                })
-                .catch(err => {
-                    if (err && err.message === 'extract failed') return;
-                    console.error(err);
-                    alert('视频生成失败');
-                });
+                .then(data => { if (data && data.status === 'success' && data.video_path) { outputVideoInput.value = data.video_path; setVideoSrc(data.video_path); } else { alert(data && data.message ? data.message : '视频生成失败'); } })
+                .catch(err => { console.error(err); alert('视频生成失败'); });
             });
 
             // Play Video button: load from outputVideoPath and start playback

@@ -24,11 +24,7 @@
 
                 <div class="form-group">
                     <label>训练目标演讲者</label>
-                    <select id="targetSpeaker">
-                        <option value="obama">Obama</option>
-                        <option value="trump">Trump</option>
-                        <option value="achu">路人甲</option>
-                    </select>
+                    <select id="targetSpeaker"></select>
                 </div>
 
                 <div class="form-group">
@@ -90,11 +86,17 @@
                     <div style="display:flex; gap:12px;">
                         <div style="flex:1;">
                             <div style="margin-bottom:4px;font-weight:bold;">Head-NeRF</div>
-                            <textarea id="headCkptList" rows="6" style="width:100%; resize:vertical; overflow:auto;" placeholder="例如：\n190000_head.tar\n200000_head.tar\n..."></textarea>
+                            <textarea id="headCkptList" rows="6" style="width:100%; resize:vertical; overflow:auto;" placeholder="例如：
+190000_head.tar
+200000_head.tar
+..."></textarea>
                         </div>
                         <div style="flex:1;">
                             <div style="margin-bottom:4px;font-weight:bold;">Torso-NeRF</div>
-                            <textarea id="torsoCkptList" rows="6" style="width:100%; resize:vertical; overflow:auto;" placeholder="例如：\n190000_body.tar\n200000_body.tar\n..."></textarea>
+                            <textarea id="torsoCkptList" rows="6" style="width:100%; resize:vertical; overflow:auto;" placeholder="例如：
+190000_body.tar
+200000_body.tar
+..."></textarea>
                         </div>
                     </div>
                 </div>
@@ -149,6 +151,22 @@
             return projectRelativePath;
         }
 
+        function capitalizeFirst(s) {
+            s = (s || '').toString();
+            return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+        }
+
+        function populateSpeakers() {
+            const keys = Object.keys(speakerProfiles || {});
+            targetSpeakerEl.innerHTML = '';
+            keys.forEach(k => {
+                const opt = document.createElement('option');
+                opt.value = k.toLowerCase();
+                opt.textContent = capitalizeFirst(k.toLowerCase());
+                targetSpeakerEl.appendChild(opt);
+            });
+        }
+
         function renderCommands() {
             const idPath = (dataFolderInput.value || '').trim() || '$id';
             const replaceAll = (s) => s.replaceAll('$id', idPath);
@@ -178,7 +196,7 @@
                 video.load();
             }
             if (fromSpeakerChange) {
-                const capitalized = key.charAt(0).toUpperCase() + key.slice(1);
+                const capitalized = capitalizeFirst(key);
                 dataFolderInput.value = `dataset/${capitalized}`;
                 renderCommands();
                 updateCheckpoints();
@@ -210,11 +228,12 @@
                 .catch(() => { headCkptList.value=''; torsoCkptList.value=''; });
         }
 
-        // Load speaker profiles JSON and set initial video based on selected speaker
+        // Load speaker profiles JSON, populate speakers, and set initial video
         fetch('/config/speakers')
             .then(res => res.json())
             .then(data => {
                 speakerProfiles = data || {};
+                populateSpeakers();
                 updateReferenceVideo(false);
                 renderCommands();
                 updateCheckpoints();
@@ -279,4 +298,5 @@
     })();
 </script>
 
+</body>
 </html>
