@@ -16,11 +16,26 @@ OUTPUT_DIR = os.path.join(PROJECT_ROOT, 'output')
 ASSET_DIR = os.path.join(PROJECT_ROOT, 'asset')
 DATASET_DIR = os.path.join(PROJECT_ROOT, 'dataset')
 SPEAKER_PROFILES_PATH = os.path.join(PROJECT_ROOT, 'speaker_profiles.json')
+LOCAL_SETTINGS_PATH = os.path.join(PROJECT_ROOT, 'local_settings.json')
 
+# Load secrets/settings from external untracked file or environment
+def _load_local_settings():
+    settings = {}
+    try:
+        if os.path.isfile(LOCAL_SETTINGS_PATH):
+            with open(LOCAL_SETTINGS_PATH, 'r', encoding='utf-8') as f:
+                settings = json.load(f) or {}
+    except Exception:
+        settings = {}
+    return settings
 
-app = Flask(__name__)
+_local = _load_local_settings()
+API_KEY = os.getenv('DEEPSEEK_API_KEY') or _local.get('deepseek_api_key') or ''
+PUBLIC_CLONE_IP = os.getenv('VOICEPERSONA_CLONE_IP') or _local.get('clone_public_ip') or ''
+
+# OpenAI client init using external config
 client = OpenAI(
-    api_key="sk-84a40a46260844e3901324bffd05e906", #os.getenv("DEEPSEEK_API_KEY"),
+    api_key=API_KEY,
     base_url="https://api.deepseek.com/v1"
 )
 
@@ -381,11 +396,11 @@ def generate_huawei():
         return jsonify({"status": "error", "message": f"reference audio not found: {ref_fs_path}"}), 400
 
     try:
-        # Hard-coded remote clone API per your request
-        public_ip = '1.94.211.55'
-        url = f"http://{public_ip}:8000/clone"
+        # Read public IP from external settings/env
+        if not PUBLIC_CLONE_IP:
+            return jsonify({"status": "error", "message": "Clone server IP not configured"}), 500
+        url = f"http://{PUBLIC_CLONE_IP}:8000/clone"
 
-        # Send file and form data per example
         with open(ref_fs_path, 'rb') as f:
             files = { 'reference_audio': f }
             data = {
@@ -397,7 +412,6 @@ def generate_huawei():
         if resp.status_code != 200:
             return jsonify({"status": "error", "message": f"Remote API error: {resp.status_code} {resp.text}"}), 502
 
-        # Save binary audio content to OUTPUT_DIR
         os.makedirs(OUTPUT_DIR, exist_ok=True)
         timestamp = time.strftime('%y%m%d_%H%M%S')
         filename = f"{timestamp}_output.wav"
