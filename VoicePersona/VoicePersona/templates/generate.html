@@ -65,7 +65,7 @@
                 <!-- 视频预览和下一步用到的控件（与音频分离） -->
                 <div class="form-group" style="margin-top: 16px;">
                     <label>输出视频地址</label>
-                    <input type="text" id="outputVideoPath" placeholder="例如：/static/videos/output.mp4">
+                    <input type="text" id="outputVideoPath" placeholder="例如：/media/asset/Obama.mp4 或 /media/output/result.mp4">
                 </div>
                 <div style="margin-top: 8px; display:flex; gap:8px; align-items:center;">
                     <button type="submit" id="generateBtn" class="submit-btn">生成视频</button>
@@ -90,6 +90,7 @@
             const referenceAudioPathEl = document.getElementById('referenceAudioPath');
 
             let speakerProfiles = null;
+            let hasGeneratedVideo = false; // becomes true after we set /media/output/result.mp4
 
             function toMediaUrl(projectRelativePath) {
                 // Convert paths like './asset/Obama_1st_15s.wav' or './asset/Obama.mp4' to '/media/asset/...'
@@ -113,7 +114,17 @@
                 video.load();
             }
 
-            function updateReferenceMedia() {
+            function setSpeakerPreviewVideo() {
+                if (!speakerProfiles) return;
+                const key = (targetSpeakerEl.value || '').toLowerCase();
+                const profile = speakerProfiles[key];
+                if (!profile || !profile.video) return;
+                const videoUrl = toMediaUrl(profile.video);
+                outputVideoInput.value = videoUrl; // default to speaker preview video
+                setVideoSrc(videoUrl);
+            }
+
+            function updateReferenceMedia(resetVideo = false) {
                 if (!speakerProfiles) return;
                 const key = (targetSpeakerEl.value || '').toLowerCase();
                 const profile = speakerProfiles[key];
@@ -124,10 +135,9 @@
                     referenceAudioPathEl.value = audioUrl;
                     setAudioSrc(audioUrl);
                 }
-                if (profile.video) {
-                    const videoUrl = toMediaUrl(profile.video);
-                    outputVideoInput.value = videoUrl;
-                    setVideoSrc(videoUrl);
+                if (resetVideo) {
+                    hasGeneratedVideo = false;
+                    setSpeakerPreviewVideo();
                 }
             }
 
@@ -136,12 +146,15 @@
                 .then(res => res.json())
                 .then(data => {
                     speakerProfiles = data || {};
-                    updateReferenceMedia();
+                    // On first load, default to the speaker preview video
+                    setSpeakerPreviewVideo();
+                    // And set reference audio
+                    updateReferenceMedia(false);
                 })
                 .catch(err => console.error('Failed to load speaker profiles', err));
 
             // Handlers
-            targetSpeakerEl.addEventListener('change', updateReferenceMedia);
+            targetSpeakerEl.addEventListener('change', function() { updateReferenceMedia(true); });
             outputVideoInput.addEventListener('change', function() { setVideoSrc(this.value); });
             outputWaveInput.addEventListener('change', function() { setAudioSrc(this.value); });
 
@@ -202,12 +215,6 @@
                     return;
                 }
 
-                // Log context for verification
-                console.log('[Huawei TTS] reference_audio_path:', referenceAudioPath);
-                console.log('[Huawei TTS] reference_text:', referenceText);
-                console.log('[Huawei TTS] target_text:', inputText);
-
-                // Call server-side proxy endpoint that integrates with remote TTS
                 const params = new URLSearchParams({
                     input_text: inputText,
                     target_speaker: targetSpeaker,
@@ -224,7 +231,6 @@
                 .then(data => {
                     if (data && data.status === 'success' && data.output_path) {
                         outputWaveInput.value = data.output_path;
-                        const audio = document.getElementById('previewAudio');
                         audio.src = data.output_path;
                         audio.load();
                     } else {
@@ -253,11 +259,6 @@
                 .then(res => res.json())
                 .then(data => {
                     if (data && data.status === 'success' && data.npy_path) {
-                        console.log('DeepSpeech npy generated:', data.npy_path);
-                        // After DS extraction, set or reload the video from its path
-                        setVideoSrc(outputVideoInput.value);
-
-                        // Send request to generate video using the speaker and npy_path
                         const speaker = (targetSpeakerEl.value || '').trim().toLowerCase();
                         const npyPath = data.npy_path;
                         return fetch('/api/generate_video', {
@@ -267,11 +268,14 @@
                         });
                     } else {
                         alert(data && data.message ? data.message : '特征提取失败');
+                        throw new Error('extract failed');
                     }
                 })
                 .then(res => res.json())
                 .then(data => {
                     if (data && data.status === 'success' && data.video_path) {
+                        // After video generation, always point to /media/output/result.mp4
+                        hasGeneratedVideo = true;
                         outputVideoInput.value = data.video_path;
                         setVideoSrc(data.video_path);
                     } else {
@@ -279,6 +283,7 @@
                     }
                 })
                 .catch(err => {
+                    if (err && err.message === 'extract failed') return;
                     console.error(err);
                     alert('视频生成失败');
                 });

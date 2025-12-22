@@ -199,7 +199,7 @@ def api_generate_video():
     if not os.path.isfile(npy_fs):
         return jsonify({"status": "error", "message": f"npy file not found: {npy_fs}"}), 400
 
-    # Build command
+    # Build command to run TorsoNeRF
     config_rel = os.path.join(dataset_rel, 'TorsoNeRFTest_config.txt')
     cmd = ['python', 'NeRFs/TorsoNeRF/run_nerf.py', '--config', config_rel, '--aud_file', npy_fs, '--test_size', '-1']
     print('Generate video cmd:', ' '.join(cmd))
@@ -209,15 +209,35 @@ def api_generate_video():
     except subprocess.CalledProcessError as e:
         return jsonify({"status": "error", "message": f"Video generation failed: {e}"}), 500
 
-    # Expected output path: dataset/<Speaker>/logs/<Speaker>_com/test_aud_rst/result.avi
+    # Check for result.avi
     logs_dir = os.path.join(PROJECT_ROOT, dataset_rel, 'logs')
     out_dir = os.path.join(logs_dir, f"{sp_cap}_com", 'test_aud_rst')
-    result_path = os.path.join(out_dir, 'result.avi')
-    if not os.path.isfile(result_path):
-        return jsonify({"status": "error", "message": f"result video not found: {result_path}"}), 500
+    result_avi = os.path.join(out_dir, 'result.avi')
+    if not os.path.isfile(result_avi):
+        return jsonify({"status": "error", "message": f"result video not found: {result_avi}"}), 500
 
-    rel_url = os.path.relpath(result_path, DATASET_DIR).replace('\\', '/')
-    video_url = f"/media/dataset/{rel_url}"
+    # Convert AVI to MP4 with ffmpeg and save to OUTPUT_DIR as result.mp4 (overwrite if exists)
+    try:
+        os.makedirs(OUTPUT_DIR, exist_ok=True)
+        mp4_name = "result.mp4"
+        result_mp4 = os.path.join(OUTPUT_DIR, mp4_name)
+        ffmpeg_cmd = [
+            'ffmpeg', '-y',
+            '-i', result_avi,
+            '-vcodec', 'libx264',
+            '-acodec', 'aac',
+            '-movflags', 'faststart',
+            result_mp4
+        ]
+        print('FFmpeg convert cmd:', ' '.join(ffmpeg_cmd))
+        subprocess.run(ffmpeg_cmd, cwd=PROJECT_ROOT, check=True)
+    except subprocess.CalledProcessError as e:
+        return jsonify({"status": "error", "message": f"ffmpeg conversion failed: {e}"}), 500
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"conversion error: {e}"}), 500
+
+    # Return URL to MP4 under /media/output
+    video_url = f"/media/output/{mp4_name}"
     return jsonify({"status": "success", "video_path": video_url})
 
 # API: run training based on selection
@@ -281,11 +301,11 @@ def _find_conda_exe():
 def api_process_data():
     # Prefer form fields, then JSON, then query args for robustness
     speaker = (request.form.get('speaker')
-               or (request.json.get('speaker') if request.is_json and request.json else None)
+               or (request.json.get('speaker') if request.is_json else None)
                or request.args.get('speaker')
                or '')
     step = (request.form.get('step')
-            or (request.json.get('step') if request.is_json and request.json else None)
+            or (request.json.get('step') if request.is_json else None)
             or request.args.get('step')
             or '')
 
