@@ -84,6 +84,77 @@ def config_speakers():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# API: add a new speaker by uploading a video and sample text
+@app.route('/api/add_speaker', methods=['POST'])
+def api_add_speaker():
+    try:
+        name = (request.form.get('name') or '').strip()
+        sample_text = (request.form.get('sample_text') or '').strip()
+        file = request.files.get('video')
+        if not name:
+            return jsonify({"status": "error", "message": "name is required"}), 400
+        if not file:
+            return jsonify({"status": "error", "message": "video file is required"}), 400
+
+        # Build safe base name for files and dict key
+        def _safe_base(s: str) -> str:
+            s = s.strip().lower()
+            # keep unicode letters/digits, replace others with underscore
+            return ''.join(ch if ch.isalnum() else '_' for ch in s) or 'speaker'
+
+        base = _safe_base(name)
+        os.makedirs(ASSET_DIR, exist_ok=True)
+        video_filename = f"{base}.mp4"
+        wav_filename = f"{base}.wav"
+        video_path = os.path.join(ASSET_DIR, video_filename)
+        wav_path = os.path.join(ASSET_DIR, wav_filename)
+
+        # Save uploaded video (overwrite if exists)
+        file.save(video_path)
+
+        # Extract 16kHz mono PCM WAV using ffmpeg
+        ffmpeg_cmd = [
+            'ffmpeg', '-y',
+            '-i', video_path,
+            '-vn',
+            '-ac', '1',
+            '-ar', '16000',
+            '-c:a', 'pcm_s16le',
+            wav_path
+        ]
+        try:
+            print('FFmpeg extract audio cmd:', ' '.join(ffmpeg_cmd))
+            subprocess.run(ffmpeg_cmd, cwd=PROJECT_ROOT, check=True)
+        except subprocess.CalledProcessError as e:
+            return jsonify({"status": "error", "message": f"ffmpeg failed: {e}"}), 500
+
+        # Update speaker_profiles.json
+        profile_entry = {
+            "wav": f"./asset/{wav_filename}",
+            "sample_text": sample_text,
+            "video": f"./asset/{video_filename}"
+        }
+        try:
+            profiles = {}
+            if os.path.isfile(SPEAKER_PROFILES_PATH):
+                with open(SPEAKER_PROFILES_PATH, 'r', encoding='utf-8') as f:
+                    profiles = json.load(f) or {}
+            profiles[base] = profile_entry
+            with open(SPEAKER_PROFILES_PATH, 'w', encoding='utf-8') as f:
+                json.dump(profiles, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            return jsonify({"status": "error", "message": f"failed to update profiles: {e}"}), 500
+
+        return jsonify({
+            "status": "success",
+            "speaker": base,
+            "profile": profile_entry,
+            "video_url": f"/media/asset/{video_filename}",
+            "wav_url": f"/media/asset/{wav_filename}"
+        })
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 # API: list all head and torso checkpoints for a dataset
 @app.route('/api/checkpoints')
 def api_checkpoints():
@@ -301,11 +372,11 @@ def _find_conda_exe():
 def api_process_data():
     # Prefer form fields, then JSON, then query args for robustness
     speaker = (request.form.get('speaker')
-               or (request.json.get('speaker') if request.is_json else None)
+               or (request.json.get('speaker') if request.is_json and request.json else None)
                or request.args.get('speaker')
                or '')
     step = (request.form.get('step')
-            or (request.json.get('step') if request.is_json else None)
+            or (request.json.get('step') if request.is_json and request.json else None)
             or request.args.get('step')
             or '')
 

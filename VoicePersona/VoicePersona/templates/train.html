@@ -23,8 +23,13 @@
                 </div>
 
                 <div class="form-group">
-                    <label>训练目标演讲者</label>
-                    <select id="targetSpeaker"></select>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <div style="flex:0 0 50%; display:flex; align-items:center; gap:8px;">
+                            <label style="white-space:nowrap;">训练目标演讲者</label>
+                            <select id="targetSpeaker" style="flex:1;"></select>
+                        </div>
+                        <button type="button" id="addSpeakerBtn" class="submit-btn" style="white-space:nowrap; flex:0 0 50%;">添加新演讲者</button>
+                    </div>
                 </div>
 
                 <div class="form-group">
@@ -109,6 +114,33 @@
         </div>
     </div>
 
+    <!-- 添加新演讲者 Modal -->
+    <div id="addSpeakerModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:1000;">
+        <div style="max-width:520px; width:92%; margin:8% auto; background:#fff; border-radius:8px; overflow:hidden;">
+            <div style="padding:12px 16px; background:#0f1520; color:#fff; font-weight:bold;">添加新演讲者</div>
+            <div style="padding:16px;">
+                <div class="form-group">
+                    <label>演讲者名称</label>
+                    <input type="text" id="newSpeakerName" placeholder="例如：Obama 或 路人甲" style="width:100%;">
+                </div>
+                <div class="form-group" style="margin-top:10px;">
+                    <label>上传 MP4 视频</label>
+                    <input type="file" id="newSpeakerVideo" accept="video/mp4" style="width:100%;">
+                    <div style="font-size:12px;color:#666;">系统会从视频中抽取 16kHz 单声道 WAV 音频并保存到 asset/。</div>
+                </div>
+                <div class="form-group" style="margin-top:10px;">
+                    <label>视频文本脚本（sample_text）</label>
+                    <textarea id="newSpeakerText" rows="4" placeholder="请输入视频对应的文本脚本..." style="width:100%;"></textarea>
+                </div>
+                <div style="margin-top:14px; display:flex; justify-content:flex-end; gap:8px;">
+                    <button type="button" id="cancelAddSpeakerBtn" class="submit-btn" style="background:#999;">取消</button>
+                    <button type="button" id="confirmAddSpeakerBtn" class="submit-btn">确定添加</button>
+                </div>
+                <div id="addSpeakerStatus" style="margin-top:8px; font-size:12px; color:#d32f2f;"></div>
+            </div>
+        </div>
+    </div>
+
 <script>
     (function() {
         const form = document.querySelector('.right-form form');
@@ -126,6 +158,15 @@
         const processDescEl = document.getElementById('processDesc');
         const processCmdEl = document.getElementById('processCmd');
         const processDataBtn = document.getElementById('processDataBtn');
+
+        const addSpeakerBtn = document.getElementById('addSpeakerBtn');
+        const addSpeakerModal = document.getElementById('addSpeakerModal');
+        const cancelAddSpeakerBtn = document.getElementById('cancelAddSpeakerBtn');
+        const confirmAddSpeakerBtn = document.getElementById('confirmAddSpeakerBtn');
+        const newSpeakerNameEl = document.getElementById('newSpeakerName');
+        const newSpeakerVideoEl = document.getElementById('newSpeakerVideo');
+        const newSpeakerTextEl = document.getElementById('newSpeakerText');
+        const addSpeakerStatus = document.getElementById('addSpeakerStatus');
 
         let speakerProfiles = null;
 
@@ -266,6 +307,52 @@
                 }
             })
             .catch(() => alert('数据处理失败'));
+        });
+
+        // Add new speaker modal behavior
+        function openAddSpeakerModal() {
+            addSpeakerStatus.textContent = '';
+            addSpeakerModal.style.display = 'block';
+        }
+        function closeAddSpeakerModal() {
+            addSpeakerModal.style.display = 'none';
+            newSpeakerNameEl.value = '';
+            newSpeakerVideoEl.value = '';
+            newSpeakerTextEl.value = '';
+        }
+        addSpeakerBtn.addEventListener('click', openAddSpeakerModal);
+        cancelAddSpeakerBtn.addEventListener('click', closeAddSpeakerModal);
+
+        confirmAddSpeakerBtn.addEventListener('click', function() {
+            const name = (newSpeakerNameEl.value || '').trim();
+            const file = newSpeakerVideoEl.files && newSpeakerVideoEl.files[0];
+            const text = (newSpeakerTextEl.value || '').trim();
+            if (!name) { addSpeakerStatus.textContent = '请输入演讲者名称'; return; }
+            if (!file) { addSpeakerStatus.textContent = '请上传 MP4 视频'; return; }
+            if (!text) { addSpeakerStatus.textContent = '请输入视频文本脚本'; return; }
+
+            const fd = new FormData();
+            fd.append('name', name);
+            fd.append('sample_text', text);
+            fd.append('video', file);
+
+            addSpeakerStatus.textContent = '上传中，请稍候...';
+            fetch('/api/add_speaker', { method: 'POST', body: fd })
+                .then(res => res.json())
+                .then(data => {
+                    if (data && data.status === 'success' && data.speaker && data.profile) {
+                        const key = (data.speaker || '').toLowerCase();
+                        speakerProfiles[key] = data.profile;
+                        populateSpeakers();
+                        targetSpeakerEl.value = key;
+                        updateReferenceVideo(true);
+                        closeAddSpeakerModal();
+                        alert('添加成功');
+                    } else {
+                        addSpeakerStatus.textContent = (data && data.message) ? data.message : '添加失败';
+                    }
+                })
+                .catch(err => { console.error(err); addSpeakerStatus.textContent = '网络错误，添加失败'; });
         });
 
         // Intercept form submit and run training
