@@ -7,6 +7,7 @@ import sys
 from openai import OpenAI
 import requests
 import time
+import shutil
 
 app = Flask(__name__)
 
@@ -15,6 +16,7 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 OUTPUT_DIR = os.path.join(PROJECT_ROOT, 'output')
 ASSET_DIR = os.path.join(PROJECT_ROOT, 'asset')
 DATASET_DIR = os.path.join(PROJECT_ROOT, 'dataset')
+DATASET_VIDS_DIR = os.path.join(DATASET_DIR, 'vids')
 SPEAKER_PROFILES_PATH = os.path.join(PROJECT_ROOT, 'speaker_profiles.json')
 LOCAL_SETTINGS_PATH = os.path.join(PROJECT_ROOT, 'local_settings.json')
 
@@ -104,13 +106,23 @@ def api_add_speaker():
 
         base = _safe_base(name)
         os.makedirs(ASSET_DIR, exist_ok=True)
+        os.makedirs(DATASET_VIDS_DIR, exist_ok=True)
         video_filename = f"{base}.mp4"
         wav_filename = f"{base}.wav"
         video_path = os.path.join(ASSET_DIR, video_filename)
         wav_path = os.path.join(ASSET_DIR, wav_filename)
+        dataset_video_path = os.path.join(DATASET_VIDS_DIR, video_filename)
 
-        # Save uploaded video (overwrite if exists)
+        # Save uploaded video (overwrite if exists) under asset/
         file.save(video_path)
+        # Also save a copy under dataset/vids/
+        try:
+            shutil.copyfile(video_path, dataset_video_path)
+        except Exception as e:
+            # Non-fatal: continue, but report in response
+            copy_error = str(e)
+        else:
+            copy_error = None
 
         # Extract 16kHz mono PCM WAV using ffmpeg
         ffmpeg_cmd = [
@@ -145,13 +157,18 @@ def api_add_speaker():
         except Exception as e:
             return jsonify({"status": "error", "message": f"failed to update profiles: {e}"}), 500
 
-        return jsonify({
+        resp = {
             "status": "success",
             "speaker": base,
             "profile": profile_entry,
             "video_url": f"/media/asset/{video_filename}",
             "wav_url": f"/media/asset/{wav_filename}"
-        })
+        }
+        if copy_error:
+            resp["note"] = f"saved to asset/, but failed to copy to dataset/vids: {copy_error}"
+        else:
+            resp["dataset_video_url"] = f"/media/dataset/vids/{video_filename}"
+        return jsonify(resp)
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 

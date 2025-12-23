@@ -191,7 +191,23 @@
                 .then(data => { if (data && data.status === 'success' && data.video_path) { hasGeneratedVideo = true; outputVideoPathEl.value = data.video_path; setVideoSrc(data.video_path); } else { alert(data && data.message ? data.message : '视频生成失败'); } })
                 .catch(err => { console.error(err); alert('视频生成失败'); });
             });
-            playVideoBtn.addEventListener('click', function() { const src = (outputVideoPathEl.value || '').trim(); if (!src) { alert('请先填写输出视频地址'); return; } setVideoSrc(src); previewVideo.play().catch(() => {}); });
+
+            // Play both video and audio from start, no loop, and log paths
+            playVideoBtn.addEventListener('click', function() {
+                const vsrc = (outputVideoPathEl.value || '').trim();
+                const wsrc = (outputWavePathEl.value || '').trim();
+                console.log('Play requested with video:', vsrc, 'audio:', wsrc);
+                if (!vsrc) { alert('请先填写输出视频地址'); return; }
+                setVideoSrc(vsrc);
+                previewVideo.loop = false;
+                previewVideo.muted = false;
+                try { previewVideo.currentTime = 0; } catch (_) {}
+                // Always reload audio from the field if provided
+                if (wsrc) { setAudioSrc(wsrc); }
+                try { previewAudio.currentTime = 0; } catch (_) {}
+                previewVideo.play().catch((e) => { console.warn('Video play error:', e); });
+                previewAudio.play().catch((e) => { console.warn('Audio play error:', e); });
+            });
         })();
     </script>
 </body>
