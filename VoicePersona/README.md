@@ -1,4 +1,4 @@
-# VoicePersona Docker setup
+﻿# VoicePersona Docker setup
 
 This repository provides a Docker-based environment for running the VoicePersona app on Linux containers (e.g., Nvidia CUDA base images). Do not use the Windows conda export (`environment_win_py39.yml`) inside Docker; it contains OS-specific packages and prefixes.
 
@@ -14,7 +14,13 @@ Steps:
 1. Clone the repo
    - `git clone https://github.com/toby43307/voice_persona`
    - `cd voice_persona`
-2. Build the image
+2. Prepare required data/models (place them in your working copy on the host; they will be mounted into the container)
+   - `data_util/face_tracking/3DMM/01_MorphableModel.mat` (≈229 MB)
+   - `data_util/face_tracking/3DMM/3DMM_info.npy` (≈190 MB)
+   - `VoicePersona/data_util/face_parsing/79999_iter.pth` (≈50.8 MB)
+   - `pretrained_models/CosyVoice2-0.5B/` (CosyVoice 0.5B checkpoints and assets)
+   - `VoicePersona/third_party/Matcha-TTS/` (clone the Matcha-TTS repo here)
+3. Build the image
    - `docker build -t voicepersona:py39 .`
 
 Notes:
