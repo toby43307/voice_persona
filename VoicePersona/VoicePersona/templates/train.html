@@ -8,6 +8,7 @@
 </head>
 
 <body>
+    <a class="back-home" href="/">← 返回主界面</a>
     <div class="main-content" style="position:relative;min-height:600px;">
         <div class="left-preview">
             <div class="video-box">
@@ -23,12 +24,12 @@
                 </div>
 
                 <div class="form-group">
-                    <div style="display:flex; align-items:center; gap:8px;">
-                        <div style="flex:0 0 50%; display:flex; align-items:center; gap:8px;">
-                            <label style="white-space:nowrap;">训练目标演讲者</label>
-                            <select id="targetSpeaker" style="flex:1;"></select>
+                    <div class="speaker-row">
+                        <div class="speaker-select">
+                            <label style="white-space:nowrap; margin:0;">训练目标演讲者</label>
+                            <select id="targetSpeaker"></select>
                         </div>
-                        <button type="button" id="addSpeakerBtn" class="submit-btn" style="white-space:nowrap; flex:0 0 50%;">添加新演讲者</button>
+                        <button type="button" id="addSpeakerBtn" class="submit-btn add-speaker-btn">添加新演讲者</button>
                     </div>
                 </div>
 
@@ -141,249 +142,249 @@
         </div>
     </div>
 
-<script>
-    (function() {
-        const form = document.querySelector('.right-form form');
-        const video = document.getElementById('previewVideo');
-        const trainStatus = document.getElementById('trainStatus');
-        const dataFolderInput = document.getElementById('dataFolderInput');
-        const cmdPreviewEl = document.getElementById('cmdPreview');
-        const cmdTitleEl = document.getElementById('cmdTitle');
-        const targetSpeakerEl = document.getElementById('targetSpeaker');
-        const trainHeadEl = document.getElementById('trainHead');
-        const trainTorsoEl = document.getElementById('trainTorso');
-        const headCkptList = document.getElementById('headCkptList');
-        const torsoCkptList = document.getElementById('torsoCkptList');
-        const processStepEl = document.getElementById('processStep');
-        const processDescEl = document.getElementById('processDesc');
-        const processCmdEl = document.getElementById('processCmd');
-        const processDataBtn = document.getElementById('processDataBtn');
+    <script>
+        (function () {
+            const form = document.querySelector('.right-form form');
+            const video = document.getElementById('previewVideo');
+            const trainStatus = document.getElementById('trainStatus');
+            const dataFolderInput = document.getElementById('dataFolderInput');
+            const cmdPreviewEl = document.getElementById('cmdPreview');
+            const cmdTitleEl = document.getElementById('cmdTitle');
+            const targetSpeakerEl = document.getElementById('targetSpeaker');
+            const trainHeadEl = document.getElementById('trainHead');
+            const trainTorsoEl = document.getElementById('trainTorso');
+            const headCkptList = document.getElementById('headCkptList');
+            const torsoCkptList = document.getElementById('torsoCkptList');
+            const processStepEl = document.getElementById('processStep');
+            const processDescEl = document.getElementById('processDesc');
+            const processCmdEl = document.getElementById('processCmd');
+            const processDataBtn = document.getElementById('processDataBtn');
 
-        const addSpeakerBtn = document.getElementById('addSpeakerBtn');
-        const addSpeakerModal = document.getElementById('addSpeakerModal');
-        const cancelAddSpeakerBtn = document.getElementById('cancelAddSpeakerBtn');
-        const confirmAddSpeakerBtn = document.getElementById('confirmAddSpeakerBtn');
-        const newSpeakerNameEl = document.getElementById('newSpeakerName');
-        const newSpeakerVideoEl = document.getElementById('newSpeakerVideo');
-        const newSpeakerTextEl = document.getElementById('newSpeakerText');
-        const addSpeakerStatus = document.getElementById('addSpeakerStatus');
+            const addSpeakerBtn = document.getElementById('addSpeakerBtn');
+            const addSpeakerModal = document.getElementById('addSpeakerModal');
+            const cancelAddSpeakerBtn = document.getElementById('cancelAddSpeakerBtn');
+            const confirmAddSpeakerBtn = document.getElementById('confirmAddSpeakerBtn');
+            const newSpeakerNameEl = document.getElementById('newSpeakerName');
+            const newSpeakerVideoEl = document.getElementById('newSpeakerVideo');
+            const newSpeakerTextEl = document.getElementById('newSpeakerText');
+            const addSpeakerStatus = document.getElementById('addSpeakerStatus');
 
-        let speakerProfiles = null;
+            let speakerProfiles = null;
 
-        const tmplHead = 'python NeRFs/HeadNeRF/run_nerf.py --config dataset/$id/HeadNeRF_config.txt';
-        const tmplTorso = 'python NeRFs/TorsoNeRF/run_nerf.py --config dataset/$id/TorsoNeRF_config.txt';
-        const stepDescs = {
-            0: ' Extract deepspeech feature',
-            1: ' Extract images from vids',
-            2: ' Detect landmarks',
-            3: ' Face parsing',
-            4: ' Extract background image',
-            5: ' Save training images',
-            6: ' Estimate head pose',
-            7: ' Save transform param'
-        };
+            const tmplHead = 'python NeRFs/HeadNeRF/run_nerf.py --config dataset/$id/HeadNeRF_config.txt';
+            const tmplTorso = 'python NeRFs/TorsoNeRF/run_nerf.py --config dataset/$id/TorsoNeRF_config.txt';
+            const stepDescs = {
+                0: ' Extract deepspeech feature',
+                1: ' Extract images from vids',
+                2: ' Detect landmarks',
+                3: ' Face parsing',
+                4: ' Extract background image',
+                5: ' Save training images',
+                6: ' Estimate head pose',
+                7: ' Save transform param'
+            };
 
-        function toMediaUrl(projectRelativePath) {
-            if (!projectRelativePath) return '';
-            const trimmed = projectRelativePath.replace(/^\.\//, '');
-            if (trimmed.startsWith('asset/')) {
-                return '/media/' + trimmed; // served by /media/asset/<file>
-            }
-            return projectRelativePath;
-        }
-
-        function capitalizeFirst(s) {
-            s = (s || '').toString();
-            return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
-        }
-
-        function populateSpeakers() {
-            const keys = Object.keys(speakerProfiles || {});
-            targetSpeakerEl.innerHTML = '';
-            keys.forEach(k => {
-                const opt = document.createElement('option');
-                opt.value = k.toLowerCase();
-                opt.textContent = capitalizeFirst(k.toLowerCase());
-                targetSpeakerEl.appendChild(opt);
-            });
-        }
-
-        function renderCommands() {
-            const idPath = (dataFolderInput.value || '').trim() || '$id';
-            const replaceAll = (s) => s.replaceAll('$id', idPath);
-            if (trainHeadEl.checked) {
-                cmdTitleEl.textContent = 'Head-NeRF';
-                cmdPreviewEl.textContent = replaceAll(tmplHead);
-            } else {
-                cmdTitleEl.textContent = 'Torso-NeRF';
-                cmdPreviewEl.textContent = replaceAll(tmplTorso);
-            }
-        }
-
-        function renderProcessCmd() {
-            const step = parseInt(processStepEl.value, 10) || 0;
-            const speakerId = (targetSpeakerEl.value || '').trim() || '$1';
-            processDescEl.textContent = stepDescs[step];
-            processCmdEl.textContent = `python data_util/process_data.py --id=${speakerId} --step=${step}`;
-        }
-
-        function updateReferenceVideo(fromSpeakerChange = false) {
-            if (!speakerProfiles) return;
-            const key = (targetSpeakerEl.value || '').toLowerCase();
-            const profile = speakerProfiles[key];
-            if (profile && profile.video) {
-                const videoUrl = toMediaUrl(profile.video);
-                video.src = videoUrl;
-                video.load();
-            }
-            if (fromSpeakerChange) {
-                const capitalized = capitalizeFirst(key);
-                dataFolderInput.value = `dataset/${capitalized}`;
-                renderCommands();
-                updateCheckpoints();
-                renderProcessCmd();
-            }
-        }
-
-        function basename(path) {
-            const parts = (path || '').split('/');
-            return parts[parts.length - 1] || '';
-        }
-
-        function updateCheckpoints() {
-            const datasetPath = (dataFolderInput.value || '').trim();
-            if (!datasetPath) { headCkptList.value = ''; torsoCkptList.value=''; return; }
-            fetch(`/api/checkpoints?dataset=${encodeURIComponent(datasetPath)}`)
-                .then(res => res.json())
-                .then(data => {
-                    if (data && !data.error) {
-                        const headNames = Array.isArray(data.head) ? data.head.map(basename) : [];
-                        const torsoNames = Array.isArray(data.torso) ? data.torso.map(basename) : [];
-                        headCkptList.value = headNames.join('\n');
-                        torsoCkptList.value = torsoNames.join('\n');
-                    } else {
-                        headCkptList.value = '';
-                        torsoCkptList.value = '';
-                    }
-                })
-                .catch(() => { headCkptList.value=''; torsoCkptList.value=''; });
-        }
-
-        // Load speaker profiles JSON, populate speakers, and set initial video
-        fetch('/config/speakers')
-            .then(res => res.json())
-            .then(data => {
-                speakerProfiles = data || {};
-                populateSpeakers();
-                updateReferenceVideo(false);
-                renderCommands();
-                updateCheckpoints();
-                renderProcessCmd();
-            })
-            .catch(err => console.error('Failed to load speaker profiles', err));
-
-        // Change handlers
-        targetSpeakerEl.addEventListener('change', function() { updateReferenceVideo(true); });
-        trainHeadEl.addEventListener('change', renderCommands);
-        trainTorsoEl.addEventListener('change', renderCommands);
-        dataFolderInput.addEventListener('input', function(){ renderCommands(); updateCheckpoints(); });
-        processStepEl.addEventListener('change', renderProcessCmd);
-
-        processDataBtn.addEventListener('click', function() {
-            const step = (processStepEl.value || '0');
-            const speakerId = (targetSpeakerEl.value || '').trim();
-            if (!speakerId) { alert('请选择演讲者'); return; }
-            fetch('/api/process_data', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: new URLSearchParams({ speaker: speakerId, step: step })
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data && data.status === 'success') {
-                    alert('数据处理完成');
-                } else {
-                    alert(data && data.message ? data.message : '数据处理失败');
+            function toMediaUrl(projectRelativePath) {
+                if (!projectRelativePath) return '';
+                const trimmed = projectRelativePath.replace(/^\.\//, '');
+                if (trimmed.startsWith('asset/')) {
+                    return '/media/' + trimmed; // served by /media/asset/<file>
                 }
-            })
-            .catch(() => alert('数据处理失败'));
-        });
+                return projectRelativePath;
+            }
 
-        // Add new speaker modal behavior
-        function openAddSpeakerModal() {
-            addSpeakerStatus.textContent = '';
-            addSpeakerModal.style.display = 'block';
-        }
-        function closeAddSpeakerModal() {
-            addSpeakerModal.style.display = 'none';
-            newSpeakerNameEl.value = '';
-            newSpeakerVideoEl.value = '';
-            newSpeakerTextEl.value = '';
-        }
-        addSpeakerBtn.addEventListener('click', openAddSpeakerModal);
-        cancelAddSpeakerBtn.addEventListener('click', closeAddSpeakerModal);
+            function capitalizeFirst(s) {
+                s = (s || '').toString();
+                return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+            }
 
-        confirmAddSpeakerBtn.addEventListener('click', function() {
-            const name = (newSpeakerNameEl.value || '').trim();
-            const file = newSpeakerVideoEl.files && newSpeakerVideoEl.files[0];
-            const text = (newSpeakerTextEl.value || '').trim();
-            if (!name) { addSpeakerStatus.textContent = '请输入演讲者名称'; return; }
-            if (!file) { addSpeakerStatus.textContent = '请上传 MP4 视频'; return; }
-            if (!text) { addSpeakerStatus.textContent = '请输入视频文本脚本'; return; }
+            function populateSpeakers() {
+                const keys = Object.keys(speakerProfiles || {});
+                targetSpeakerEl.innerHTML = '';
+                keys.forEach(k => {
+                    const opt = document.createElement('option');
+                    opt.value = k.toLowerCase();
+                    opt.textContent = capitalizeFirst(k.toLowerCase());
+                    targetSpeakerEl.appendChild(opt);
+                });
+            }
 
-            const fd = new FormData();
-            fd.append('name', name);
-            fd.append('sample_text', text);
-            fd.append('video', file);
+            function renderCommands() {
+                const idPath = (dataFolderInput.value || '').trim() || '$id';
+                const replaceAll = (s) => s.replaceAll('$id', idPath);
+                if (trainHeadEl.checked) {
+                    cmdTitleEl.textContent = 'Head-NeRF';
+                    cmdPreviewEl.textContent = replaceAll(tmplHead);
+                } else {
+                    cmdTitleEl.textContent = 'Torso-NeRF';
+                    cmdPreviewEl.textContent = replaceAll(tmplTorso);
+                }
+            }
 
-            addSpeakerStatus.textContent = '上传中，请稍候...';
-            fetch('/api/add_speaker', { method: 'POST', body: fd })
+            function renderProcessCmd() {
+                const step = parseInt(processStepEl.value, 10) || 0;
+                const speakerId = (targetSpeakerEl.value || '').trim() || '$1';
+                processDescEl.textContent = stepDescs[step];
+                processCmdEl.textContent = `python data_util/process_data.py --id=${speakerId} --step=${step}`;
+            }
+
+            function updateReferenceVideo(fromSpeakerChange = false) {
+                if (!speakerProfiles) return;
+                const key = (targetSpeakerEl.value || '').toLowerCase();
+                const profile = speakerProfiles[key];
+                if (profile && profile.video) {
+                    const videoUrl = toMediaUrl(profile.video);
+                    video.src = videoUrl;
+                    video.load();
+                }
+                if (fromSpeakerChange) {
+                    const capitalized = capitalizeFirst(key);
+                    dataFolderInput.value = `dataset/${capitalized}`;
+                    renderCommands();
+                    updateCheckpoints();
+                    renderProcessCmd();
+                }
+            }
+
+            function basename(path) {
+                const parts = (path || '').split('/');
+                return parts[parts.length - 1] || '';
+            }
+
+            function updateCheckpoints() {
+                const datasetPath = (dataFolderInput.value || '').trim();
+                if (!datasetPath) { headCkptList.value = ''; torsoCkptList.value = ''; return; }
+                fetch(`/api/checkpoints?dataset=${encodeURIComponent(datasetPath)}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data && !data.error) {
+                            const headNames = Array.isArray(data.head) ? data.head.map(basename) : [];
+                            const torsoNames = Array.isArray(data.torso) ? data.torso.map(basename) : [];
+                            headCkptList.value = headNames.join('\n');
+                            torsoCkptList.value = torsoNames.join('\n');
+                        } else {
+                            headCkptList.value = '';
+                            torsoCkptList.value = '';
+                        }
+                    })
+                    .catch(() => { headCkptList.value = ''; torsoCkptList.value = ''; });
+            }
+
+            // Load speaker profiles JSON, populate speakers, and set initial video
+            fetch('/config/speakers')
                 .then(res => res.json())
                 .then(data => {
-                    if (data && data.status === 'success' && data.speaker && data.profile) {
-                        const key = (data.speaker || '').toLowerCase();
-                        speakerProfiles[key] = data.profile;
-                        populateSpeakers();
-                        targetSpeakerEl.value = key;
-                        updateReferenceVideo(true);
-                        closeAddSpeakerModal();
-                        alert('添加成功');
-                    } else {
-                        addSpeakerStatus.textContent = (data && data.message) ? data.message : '添加失败';
-                    }
+                    speakerProfiles = data || {};
+                    populateSpeakers();
+                    updateReferenceVideo(false);
+                    renderCommands();
+                    updateCheckpoints();
+                    renderProcessCmd();
                 })
-                .catch(err => { console.error(err); addSpeakerStatus.textContent = '网络错误，添加失败'; });
-        });
+                .catch(err => console.error('Failed to load speaker profiles', err));
 
-        // Intercept form submit and run training
-        if (form && trainStatus) {
-            form.addEventListener('submit', function(e) {
-                e.preventDefault();
-                const datasetPath = (dataFolderInput.value || '').trim();
-                const trainType = document.getElementById('trainHead').checked ? 'head' : 'torso';
-                trainStatus.textContent = '训练中...';
+            // Change handlers
+            targetSpeakerEl.addEventListener('change', function () { updateReferenceVideo(true); });
+            trainHeadEl.addEventListener('change', renderCommands);
+            trainTorsoEl.addEventListener('change', renderCommands);
+            dataFolderInput.addEventListener('input', function () { renderCommands(); updateCheckpoints(); });
+            processStepEl.addEventListener('change', renderProcessCmd);
 
-                fetch('/api/train', {
+            processDataBtn.addEventListener('click', function () {
+                const step = (processStepEl.value || '0');
+                const speakerId = (targetSpeakerEl.value || '').trim();
+                if (!speakerId) { alert('请选择演讲者'); return; }
+                fetch('/api/process_data', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: new URLSearchParams({ dataset_path: datasetPath, train_type: trainType })
+                    body: new URLSearchParams({ speaker: speakerId, step: step })
                 })
-                .then(res => res.json())
-                .then(data => {
-                    if (data && data.status === 'success') {
-                        trainStatus.textContent = '训练完成';
-                    } else {
-                        trainStatus.textContent = data && data.message ? data.message : '训练失败';
-                    }
-                })
-                .catch(err => {
-                    console.error(err);
-                    trainStatus.textContent = '训练失败';
-                });
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data && data.status === 'success') {
+                            alert('数据处理完成');
+                        } else {
+                            alert(data && data.message ? data.message : '数据处理失败');
+                        }
+                    })
+                    .catch(() => alert('数据处理失败'));
             });
-        }
-    })();
-</script>
+
+            // Add new speaker modal behavior
+            function openAddSpeakerModal() {
+                addSpeakerStatus.textContent = '';
+                addSpeakerModal.style.display = 'block';
+            }
+            function closeAddSpeakerModal() {
+                addSpeakerModal.style.display = 'none';
+                newSpeakerNameEl.value = '';
+                newSpeakerVideoEl.value = '';
+                newSpeakerTextEl.value = '';
+            }
+            addSpeakerBtn.addEventListener('click', openAddSpeakerModal);
+            cancelAddSpeakerBtn.addEventListener('click', closeAddSpeakerModal);
+
+            confirmAddSpeakerBtn.addEventListener('click', function () {
+                const name = (newSpeakerNameEl.value || '').trim();
+                const file = newSpeakerVideoEl.files && newSpeakerVideoEl.files[0];
+                const text = (newSpeakerTextEl.value || '').trim();
+                if (!name) { addSpeakerStatus.textContent = '请输入演讲者名称'; return; }
+                if (!file) { addSpeakerStatus.textContent = '请上传 MP4 视频'; return; }
+                if (!text) { addSpeakerStatus.textContent = '请输入视频文本脚本'; return; }
+
+                const fd = new FormData();
+                fd.append('name', name);
+                fd.append('sample_text', text);
+                fd.append('video', file);
+
+                addSpeakerStatus.textContent = '上传中，请稍候...';
+                fetch('/api/add_speaker', { method: 'POST', body: fd })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data && data.status === 'success' && data.speaker && data.profile) {
+                            const key = (data.speaker || '').toLowerCase();
+                            speakerProfiles[key] = data.profile;
+                            populateSpeakers();
+                            targetSpeakerEl.value = key;
+                            updateReferenceVideo(true);
+                            closeAddSpeakerModal();
+                            alert('添加成功');
+                        } else {
+                            addSpeakerStatus.textContent = (data && data.message) ? data.message : '添加失败';
+                        }
+                    })
+                    .catch(err => { console.error(err); addSpeakerStatus.textContent = '网络错误，添加失败'; });
+            });
+
+            // Intercept form submit and run training
+            if (form && trainStatus) {
+                form.addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    const datasetPath = (dataFolderInput.value || '').trim();
+                    const trainType = document.getElementById('trainHead').checked ? 'head' : 'torso';
+                    trainStatus.textContent = '训练中...';
+
+                    fetch('/api/train', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams({ dataset_path: datasetPath, train_type: trainType })
+                    })
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data && data.status === 'success') {
+                                trainStatus.textContent = '训练完成';
+                            } else {
+                                trainStatus.textContent = data && data.message ? data.message : '训练失败';
+                            }
+                        })
+                        .catch(err => {
+                            console.error(err);
+                            trainStatus.textContent = '训练失败';
+                        });
+                });
+            }
+        })();
+    </script>
 
 </body>
 </html>

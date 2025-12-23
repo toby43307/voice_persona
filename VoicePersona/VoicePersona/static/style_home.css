@@ -1,66 +1,204 @@
 /* static/style_home.css - 仅用于首页 */
+:root {
+    --bg-1: #001017;
+    --bg-2: #061226;
+    --accent: #00eaff;
+    --accent-2: #0077ff;
+    --glass: rgba(255,255,255,0.04);
+}
+
 body {
-    background-color: #000;
-    font-family: 'Microsoft YaHei', sans-serif;
-    height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    background: radial-gradient(1200px 600px at 10% 10%, rgba(0,150,200,0.08), transparent), radial-gradient(900px 500px at 90% 80%, rgba(0,120,255,0.06), transparent), linear-gradient(180deg,var(--bg-1),var(--bg-2));
+    font-family: 'Microsoft YaHei', 'Segoe UI', Roboto, sans-serif;
+    min-height: 100vh;
     margin: 0;
+    color: #e6f7ff;
+    -webkit-font-smoothing: antialiased;
 }
 
 /* 中间的发光方框 */
+/* layout containers */
+#login-hero, .page-root {
+    width: 100%;
+}
+
+.page-root {
+    padding: 40px 20px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column; /* 竖直排列：内容在上，页脚在下 */
+    align-items: center;
+    justify-content: center; /* 将主要内容垂直居中 */
+}
+
+
 .login-box {
-    width: 500px;
-    padding: 60px 40px;
-    border: 2px solid #00eaff;
-    /* 青色边框 */
-    border-radius: 15px;
-    box-shadow: 0 0 20px rgba(0, 234, 255, 0.3), inset 0 0 20px rgba(0, 234, 255, 0.1);
-    text-align: center;
-    background: rgba(0, 20, 30, 0.8);
+    width: min(920px, 96%);
+    padding: 36px 36px;
+    border-radius: 14px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.06));
+    box-shadow: 0 8px 40px rgba(2,18,27,0.6), inset 0 1px 0 rgba(255,255,255,0.02);
+    border: 1px solid rgba(0,255,255,0.06);
     display: flex;
     flex-direction: column;
-    gap: 40px;
+    gap: 22px;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    text-align: center;
+    backdrop-filter: blur(6px);
 }
 
-/* 标题 */
-h1 {
-    color: #00eaff;
-    font-size: 2.2rem;
+.brand {
+    text-align: center;
+}
+
+.logo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    /* 更小的蓝色背景框，但更大的 emoji 字号 */
+    width: 64px;
+    height: 64px;
+    border-radius: 12px;
+    background: linear-gradient(135deg,var(--accent),var(--accent-2));
+    box-shadow: 0 10px 28px rgba(0,120,255,0.22);
+    margin: 0 auto 6px auto;
+    padding: 4px;
+    font-size: 56px; /* 放大 emoji 本身 */
+    line-height: 1; /* 避免垂直偏移 */
+    overflow: visible; /* 允许 emoji 稍微溢出背景框以显得更大 */
+}
+
+.logo {
+    font-size: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 呼吸动画，应用于 logo（emoji） */
+@keyframes breathe {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.08);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+.logo {
+    animation: breathe 3.6s ease-in-out infinite;
+}
+
+.brand h1 {
     margin: 0;
-    line-height: 1.4;
-    text-shadow: 0 0 10px #00eaff;
+    font-size: 1.9rem;
+    letter-spacing: 1px;
+    color: var(--accent);
     font-weight: 800;
-    letter-spacing: 2px;
 }
 
-/* 按钮样式 */
-.btn {
-    display: block;
+.subtitle {
+    margin: 6px 0 0 0;
+    color: rgba(230,247,255,0.95);
+    font-size: 1.05rem;
+}
+
+/* 按钮 样式：响应式网格 */
+.buttons {
+    display: grid;
+    grid-template-columns: repeat(3,1fr);
+    gap: 18px;
+    margin-top: 14px;
     width: 100%;
-    padding: 15px 0;
-    background: linear-gradient(to bottom, #00b7ff, #0077ff);
-    color: white;
+    max-width: 760px;
+}
+
+.btn {
+    display: inline-flex;
+    padding: 20px 22px;
+    text-align: center;
     text-decoration: none;
-    font-size: 1.2rem;
-    font-weight: bold;
-    border-radius: 8px;
-    border: 1px solid #00ffff;
-    box-shadow: 0 0 10px rgba(0, 183, 255, 0.5);
-    transition: transform 0.2s;
-    margin-bottom: 15px;
-    /* 按钮间距 */
+    color: #00232b;
+    background: linear-gradient(180deg,#8ef0ff,#58c6ff);
+    border-radius: 14px;
+    font-weight: 800;
+    font-size: 1.12rem;
+    min-height: 72px;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 10px 28px rgba(3,74,120,0.14);
+    border: 1px solid rgba(255,255,255,0.12);
+    transition: transform .16s ease, box-shadow .16s ease;
 }
 
-.btn:hover {
-    transform: scale(1.02);
-    filter: brightness(1.1);
-}
+    .btn:hover {
+        transform: translateY(-6px) scale(1.02);
+        box-shadow: 0 20px 40px rgba(3,74,120,0.22);
+    }
 
+/* Footer */
 .footer {
-    position: fixed;
-    bottom: 20px;
-    color: #444;
-    font-size: 12px;
+    text-align: center;
+    color: rgba(230,247,255,0.75);
+    font-size: 0.9rem;
+    margin-top: 20px;
+    width: 100%;
+    padding: 12px 0;
+    background: linear-gradient(180deg, transparent, rgba(0,0,0,0.02));
+}
+
+/* 响应式 */
+@media (max-width:720px) {
+    .buttons {
+        grid-template-columns: 1fr;
+    }
+
+    .login-box {
+        padding: 24px;
+    }
+
+    .logo {
+        width: 56px;
+        height: 56px;
+        font-size: 46px;
+    }
+
+    .brand h1 {
+        font-size: 1.3rem
+    }
+
+    .btn {
+        font-size: 1rem;
+        min-height: 56px
+    }
+}
+
+@media (min-width:921px) {
+    .login-box {
+        flex-direction: column;
+    }
+
+    .brand {
+        text-align: center;
+        padding-left: 0
+    }
+
+    .buttons {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+/* subtle animated accent dot */
+.login-box::after {
+    content: "";
+    position: absolute;
+    pointer-events: none;
+    opacity: 0.35;
 }

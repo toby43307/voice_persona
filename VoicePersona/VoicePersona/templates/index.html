@@ -3,23 +3,29 @@
 
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>系统主页</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style_home.css') }}">
 </head>
 
 <body>
+    <main class="page-root">
+        <div class="login-box">
+            <div class="brand">
+                <div class="logo" aria-hidden="true">🎙️</div>
+                <h1>VoicePersona</h1>
+                <p class="subtitle">Talking System — 智能语音人物构建与交互</p>
+            </div>
 
-    <div class="login-box">
-        <h1>DATA HAMMER GROUP<br>TALKING SYSTEM</h1>
-
-        <div class="buttons">
-            <a href="/train" class="btn">训练模型</a>
-            <a href="/generate" class="btn">视频生成</a>
-            <a href="/chat" class="btn">人机对话</a>
+            <nav class="buttons">
+                <a href="/train" class="btn">训练模型</a>
+                <a href="/generate" class="btn">视频生成</a>
+                <a href="/chat" class="btn">人机对话</a>
+            </nav>
         </div>
-    </div>
 
-    <div class="footer">© 2025 DATA HAMMER LAB</div>
+        <footer class="footer">© 2025 VoicePersona LAB</footer>
+    </main>
 </body>
 
 </html>
