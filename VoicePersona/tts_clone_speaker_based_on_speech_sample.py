@@ -13,14 +13,14 @@ import torch
 # Map target speakers to their reference wav paths and sample text
 SPEAKER_PROFILE_MAP = {
     'obama': {
-        'wav': './asset/Obama_1st_15s.wav',
+        'wav': './asset/obama_1st_15s.wav',
         'sample_text': (
             "Speak with you about the battle we're waging against an oil spill that is assaulting our shores and our citizens."
             "On April twentieth, an explosion ripped through BP deep water horizon drilling rig, about forty miles off"
         ),
     },
     'trump': {
-        'wav': './asset/Trump_1st_15s.wav',
+        'wav': './asset/trump_1st_15s.wav',
         'sample_text': (
             "Where they opened up a lot of different plants, energy plants, energy producing plants and they're doing well. "
             "I give Germany a lot of credit for that. They've said this is a disaster, what's happening. They were going all green."

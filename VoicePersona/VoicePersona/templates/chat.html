@@ -169,17 +169,35 @@
                 .catch(() => appendMessage('ai', '网络错误，请稍后重试。'));
             });
 
-            generateAudioBtn.addEventListener('click', function() {
-                const text = (synthesisTextEl.value || '').trim(); const speaker = (targetSpeakerEl.value || '').trim();
-                if (!text) { alert('请输入要合成的文本'); return; } if (!speaker) { alert('请选择目标演讲者'); return; }
-                fetch("{{ url_for('generate') }}", {
-                    method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ input_text: text, target_speaker: speaker })
+            generateAudioBtn.addEventListener('click', function () {
+                const inputText = (synthesisTextEl.value || '').trim();
+                const targetSpeaker = (targetSpeakerEl.value || '').trim();
+                if (!inputText) { alert('请输入要合成的文本'); return; }
+                if (!targetSpeaker) { alert('请选择目标演讲者'); return; }
+                const key = (targetSpeakerEl.value || '').toLowerCase();
+                const profile = speakerProfiles ? speakerProfiles[key] : null;
+                const referenceText = profile && profile.sample_text ? profile.sample_text : '';
+                let referenceAudioPath = '';
+                if (profile && profile.wav) {
+                    referenceAudioPath = profile.wav;
+                }
+                const params = new URLSearchParams({ input_text: inputText, target_speaker: targetSpeaker, reference_audio_path: referenceAudioPath, reference_text: referenceText });
+                fetch("{{ url_for('generate_huawei') }}", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: params
                 })
-                .then(res => res.json())
-                .then(data => { if (data && data.status === 'success' && data.output_path) { outputWavePathEl.value = data.output_path; setAudioSrc(data.output_path); } else { alert(data && data.message ? data.message : '音频生成失败'); } })
-                .catch(() => alert('音频生成失败'));
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data && data.status === 'success' && data.output_path) {
+                            outputWavePathEl.value = data.output_path;
+                            setAudioSrc(data.output_path);
+                        } else {
+                            alert(data && data.message ? data.message : '华为云音频生成失败');
+                        }
+                    })
+                    .catch(err => { console.error(err); alert('华为云音频生成失败'); });
             });
-
             generateVideoBtn.addEventListener('click', function() {
                 const audioPath = (outputWavePathEl.value || '').trim(); const speaker = (targetSpeakerEl.value || '').trim();
                 if (!audioPath) { alert('请先生成或填写音频地址'); return; } if (!speaker) { alert('请选择目标演讲者'); return; }

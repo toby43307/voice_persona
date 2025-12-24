@@ -29,6 +29,11 @@ Dockerfile 使用一个定义在 `docker_environment_py39.yml` 中的最小化�
    
    - `VoicePersona/data_util/face_parsing/79999_iter.pth` (≈50.8 MB)
    
+     - [Download from HuggingFace](https://huggingface.co/afrizalha/musetalk-models/blob/main/face-parse-bisent/79999_iter.pth) 
+       **or**  
+   
+     - [https://github.com/neuralchen/SimSwap Download from Google Drive](https://drive.google.com/file/d/154JgKpzCPW82qINcVieuPH3fZ2e0P812/view)
+   
    - `pretrained_models/CosyVoice2-0.5B/` (CosyVoice 0.5B 检查点和资源)
    
      - 遵循 CosyVoice 说明：https://github.com/FunAudioLLM/CosyVoice  
@@ -65,16 +70,38 @@ Dockerfile 使用一个定义在 `docker_environment_py39.yml` 中的最小化�
   - `resampy==0.4.3`
   - `python-speech-features==0.6`
   - `tensorflow-cpu==2.10.0`
+  - `pip install hyperpyyaml==1.2.2`
+  - `pip install modelscope==1.10.0`
+  - `pip install onnxruntime==1.16.3`
+  - `pip install omegaconf==2.3.0`
+  - `pip install conformer==0.3.2`
+  - `pip install hydra-core==1.3.2`
+  - `pip install wget==3.2`
+  - `pip install natsort==8.4.0`
+
+**注意：** 根据您的环境或上游基础镜像的变动，Docker 镜像构建过程中可能不会自动安装某些列出的 Python 包。如果您在运行应用时遇到缺失包的错误，请在容器内手动安装依赖：
+
+```
+pip install -r requirements.txt
+```
+
+或者根据需要单独安装缺失的特定包。
 
 ## 运行容器
 
-`docker run -it --rm --gpus all -p 5001:5001 voice_persona_py39 /bin/bash`
+在支持GPU上的机器上运行:
+
+- `docker run -it --rm --gpus all -p 5001:5001 voice_persona_py39 /bin/bash`
+- 没有GPU的话：
+- `docker run -it --rm -p 5001:5001 voice_persona_py39 /bin/bash`
 
 然后在容器内，启动应用程序：
 
 root@c7932666d1e5:/VoicePersona# python VoicePersona/app.py
 
 该应用程序对主机可用，请通过 `http://localhost:5001` 访问。
+
+**注意：** 本项目仅使用 CPU 运行在实际应用中是不现实的。如果没有 GPU，该项目仅可用于流程演示目的。大多数模型推理和视频生成任务在纯 CPU 系统上会极其缓慢，甚至可能完全无法运行。
 
 ## 关于 environment_win_py39.yml
 
@@ -84,13 +111,52 @@ root@c7932666d1e5:/VoicePersona# python VoicePersona/app.py
   - `conda env create -f environment_win_py39.yml`
   - or `conda env update -f environment_win_py39.yml`
 
-- 在 Windows 上安装额外的包：
-  - `pip install openai`
-  - `pip install resampy==0.4.3`
-  - `pip install python-speech-features==0.6`
-  - `pip install tensorflow-cpu==2.10.0`
+不要将 `environment_win_py39.yml` 复制到 Docker 构建中；为了可移植性，请继续使用 `docker_environment_py39.yml`。
 
-**请勿**将 `environment_win_py39.yml` 复制到 Docker 构建中；为了可移植性，请始终使用 `docker_environment_py39.yml`。
+## 使用 requirements.txt（适用于 pip 用户）
+
+如果你不使用 Conda，可以通过 pip 安装 Python 依赖：
+
+```
+pip install -r requirements.txt
+```
+
+- 这会安装 `environment_win_py39.yml` 文件中 `pip:` 部分列出的所有 Python 包。
+- **系统级或 Conda 管理的包**（例如 CUDA、ffmpeg、OpenCV 等）**不会包含在 `requirements.txt` 中**，如果需要，必须单独安装。
+
+### 如何检查你的环境
+
+1. **检查 Python 版本**
+
+   ```
+   python --version
+   # 应为 Python 3.9.x
+   ```
+
+2. **检查已安装的包**
+
+   ```
+   pip list
+   # 或使用 pip check 检查依赖冲突
+   pip check
+   ```
+
+3. **（可选）检查 PyTorch 是否能使用 CUDA**
+
+   ```
+   python -c "import torch; print(torch.cuda.is_available())"
+   ```
+
+4. **检查 ffmpeg 是否可用**
+
+   ```
+   ffmpeg -version
+   ```
+
+如果缺少系统库（如 ffmpeg、CUDA、OpenCV 等），请通过操作系统的包管理器或 Conda 单独安装。
+
+- **Windows 用户**：建议使用提供的 `environment_win_py39.yml` 文件配合 Conda，以确保完整兼容性。
+- **Linux 或 Docker 用户**：请使用 Dockerfile 和 `docker_environment_py39.yml`。
 
 ## 在应用程序中提供数据集媒体文件
 
@@ -151,6 +217,10 @@ Steps:
    
    - `VoicePersona/data_util/face_parsing/79999_iter.pth` (≈50.8 MB)
    
+     - [Download from HuggingFace](https://huggingface.co/afrizalha/musetalk-models/blob/main/face-parse-bisent/79999_iter.pth)  
+       **or**  
+     - [https://github.com/neuralchen/SimSwap Download from Google Drive](https://drive.google.com/file/d/154JgKpzCPW82qINcVieuPH3fZ2e0P812/view)
+   
    - `pretrained_models/CosyVoice2-0.5B/` (CosyVoice 0.5B checkpoints and assets)
    
      - Follow CosyVoice instructions: https://github.com/FunAudioLLM/CosyVoice  
@@ -188,10 +258,32 @@ Notes:
   - `resampy==0.4.3`
   - `python-speech-features==0.6`
   - `tensorflow-cpu==2.10.0`
+  - `pip install hyperpyyaml==1.2.2`
+  - `pip install modelscope==1.10.0`
+  - `pip install onnxruntime==1.16.3`
+  - `pip install omegaconf==2.3.0`
+  - `pip install conformer==0.3.2`
+  - `pip install hydra-core==1.3.2`
+  - `pip install wget==3.2`
+  - `pip install natsort==8.4.0`
+
+**Note:** Some Python packages listed may not be installed automatically during Docker image creation, depending on your environment or changes in upstream images. If you encounter missing package errors when running the app, manually install them inside the container using:
+
+```bash
+pip install -r requirements.txt
+```
+
+or install the specific missing package as needed.
 
 ## Run the container
 
+On machine with GPU support, run:
+
 - `docker run -it --rm --gpus all -p 5001:5001 voice_persona_py39 /bin/bash`
+
+Or without GPU:
+
+- `docker run -it --rm -p 5001:5001 voice_persona_py39 /bin/bash`
 
 then inside the container, start the app:
 
@@ -207,13 +299,52 @@ The app will be available to the host, visit it at `http://localhost:5001`.
   - `conda env create -f environment_win_py39.yml`
   - or `conda env update -f environment_win_py39.yml`
 
-- Install additional packages on Windows
-  - `pip install openai`
-  - `pip install resampy==0.4.3`
-  - `pip install python-speech-features==0.6`
-  - `pip install tensorflow-cpu==2.10.0`
-
 Do not copy `environment_win_py39.yml` into Docker builds; keep using `docker_environment_py39.yml` for portability.
+
+## Using requirements.txt (pip users)
+
+If you are not using conda, you can install the Python dependencies with pip:
+
+```bash
+pip install -r requirements.txt
+```
+
+- This will install all Python packages listed in `environment_win_py39.yml` under the `pip:` section.
+- System/conda packages (e.g., CUDA, ffmpeg, opencv, etc.) are **not** included in `requirements.txt` and must be installed separately if needed.
+
+### How to check your environment
+
+1. **Check Python version**
+
+   ```bash
+   python --version
+   # Should be Python 3.9.x
+   ```
+
+2. **Check required packages**
+
+   ```bash
+   pip list
+   # Or use pip check for dependency issues
+   pip check
+   ```
+
+3. **(Optional) Check CUDA availability for PyTorch**
+
+   ```python
+   python -c "import torch; print(torch.cuda.is_available())"
+   ```
+
+4. **Check ffmpeg**
+
+   ```bash
+   ffmpeg -version
+   ```
+
+If you encounter missing system libraries (e.g., ffmpeg, CUDA, OpenCV), install them using your OS package manager or conda.
+
+- For Windows users, use the provided `environment_win_py39.yml` with conda for full compatibility.
+- For Linux/Docker, use the Dockerfile and `docker_environment_py39.yml`.
 
 ## Serving dataset media in the app
 
