@@ -1,40 +1,73 @@
-# 说话人脸生成对话系统
+﻿# VoicePersona Docker setup
 
-## 系统流程
+This repository provides a Docker-based environment for running the VoicePersona app on Linux containers (e.g., Nvidia CUDA base images). Do not use the Windows conda export (`environment_win_py39.yml`) inside Docker; it contains OS-specific packages and prefixes.
 
-```
-[用户点击“生成视频”按钮]
-        ↓
-[前端 JS 捕获表单数据并用 fetch 发送 POST 请求]
-        ↓
-[Flask 路由接收 request.form]
-        ↓
-[调用 backend/video_generator.py 中的函数 generate_video()]
-        ↓
-[后端函数返回生成视频的路径]
-        ↓
-[Flask 把路径以 JSON 形式返回给前端]
-        ↓
-[前端 JS 接收到路径 → 替换 <video> 标签的 src → 自动播放视频]
-```
+## Prerequisites
+- Docker installed
+- NVIDIA Container Toolkit (if using GPU)
+- Git
 
-## 核心模块
-- **训练后端**: `./backend/model_trainer.py` - 负责调用模型执行训练任务
-- **推理后端**: `./backend/video_generator.py` - 负责调用模型执行视频生成推理
+## Build the image
+The Dockerfile uses a minimal, Linux-friendly conda environment defined in `docker_environment_py39.yml`.
 
-## Demo 使用方法
+Steps:
+1. Clone the repo
+   - `git clone https://github.com/toby43307/voice_persona`
+   - `cd voice_persona`
+2. Prepare required data/models (place them in your working copy on the host; they will be mounted into the container)
+   - `data_util/face_tracking/3DMM/01_MorphableModel.mat` (≈229 MB)
+   - `data_util/face_tracking/3DMM/3DMM_info.npy` (≈190 MB)
+   - `VoicePersona/data_util/face_parsing/79999_iter.pth` (≈50.8 MB)
+   - `pretrained_models/CosyVoice2-0.5B/` (CosyVoice 0.5B checkpoints and assets)
+   - `VoicePersona/third_party/Matcha-TTS/` (clone the Matcha-TTS repo here)
+3. Build the image
+   - `docker build -t voicepersona:py39 .`
 
-1. 安装依赖：
-   ```bash
-   pip install flask
-   ```
+Notes:
+- `docker_environment_py39.yml` includes:
+  - Python 3.9
+  - CUDA-enabled PyTorch (cu121)
+  - Audio/vision libs: ffmpeg, opencv, libsndfile
+  - Speech/CV/python libs installed via pip
+- Additional pip packages added:
+  - `openai`
+  - `resampy==0.4.3`
+  - `python-speech-features==0.6`
+  - `tensorflow-cpu==2.10.0`
 
-2. 启动应用：
-   ```bash
-   python app.py
-   ```
+## Run the container
+If you have an NVIDIA GPU and drivers:
+- `docker run --gpus all -p 5001:5001 -v %CD%:/app voicepersona:py39`
 
-3. 访问应用：
-   打开 http://127.0.0.1:5000
+Without GPU:
+- `docker run -p 5001:5001 -v %CD%:/app voicepersona:py39`
 
-4. 点击探索功能
+The app will be available at `http://localhost:5001`.
+
+## About environment_win_py39.yml
+`environment_win_py39.yml` is a Windows-specific environment export. Use it on Windows hosts only (outside Docker):
+
+- Create / update a Windows conda env:
+  - `conda env create -f environment_win_py39.yml`
+  - or `conda env update -f environment_win_py39.yml`
+
+- Install additional packages on Windows
+  - `pip install openai`
+  - `pip install resampy==0.4.3`
+  - `pip install python-speech-features==0.6`
+  - `pip install tensorflow-cpu==2.10.0`
+
+Do not copy `environment_win_py39.yml` into Docker builds; keep using `docker_environment_py39.yml` for portability.
+
+## Serving dataset media in the app
+The Flask app exposes endpoints:
+- `/media/output/<file>` for `output/`
+- `/media/asset/<file>` for `asset/`
+- `/media/dataset/<path>` for `dataset/`
+
+This allows generated audio and videos to be previewed in the UI.
+
+## Troubleshooting
+- If PyTorch CUDA wheels fail, verify your base image CUDA version matches cu121, or switch to CPU PyTorch by removing the extra-index URL and using CPU wheels.
+- If TensorFlow errors occur inside Docker, consider keeping TensorFlow CPU only (`tensorflow-cpu==2.10.0`) as defined.
+- Ensure `speaker_profiles.json` points to valid files under `asset/`.
