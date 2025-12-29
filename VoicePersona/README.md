@@ -16,7 +16,7 @@ Dockerfile 使用一个定义在 `docker_environment_py39.yml` 中的最小化�
 
 1. 克隆仓库
    - `git clone https://github.com/toby43307/voice_persona`
-   - `cd voice_persona`
+   - `cd voice_persona/VoicePersona`
    
 2. 准备所需的数据/模型（将它们放置在您主机的当前工作副本中；它们将被挂载到容器中）
    - `data_util/face_tracking/3DMM/01_MorphableModel.mat` (≈229 MB)
@@ -66,10 +66,10 @@ Dockerfile 使用一个定义在 `docker_environment_py39.yml` 中的最小化�
   - 音频/视觉库：ffmpeg, opencv, libsndfile
   - 通过 pip 安装的语音/计算机视觉/Python 库
 - 额外添加的 pip 包:
-  - `openai`
-  - `resampy==0.4.3`
-  - `python-speech-features==0.6`
-  - `tensorflow-cpu==2.10.0`
+  - `pip install openai`
+  - `pip install resampy==0.4.3`
+  - `pip install python-speech-features==0.6`
+  - `pip install tensorflow-cpu==2.10.0`
   - `pip install hyperpyyaml==1.2.2`
   - `pip install modelscope==1.10.0`
   - `pip install onnxruntime==1.16.3`
@@ -204,7 +204,7 @@ Steps:
 
 1. Clone the repo
    - `git clone https://github.com/toby43307/voice_persona`
-   - `cd voice_persona`
+   - `cd voice_persona/VoicePersona`
    
 2. Prepare required data/models (place them in your working copy on the host; they will be mounted into the container)
    - `data_util/face_tracking/3DMM/01_MorphableModel.mat` (≈229 MB)
@@ -254,10 +254,10 @@ Notes:
   - Audio/vision libs: ffmpeg, opencv, libsndfile
   - Speech/CV/python libs installed via pip
 - Additional pip packages added:
-  - `openai`
-  - `resampy==0.4.3`
-  - `python-speech-features==0.6`
-  - `tensorflow-cpu==2.10.0`
+  - `pip install openai`
+  - `pip install resampy==0.4.3`
+  - `pip install python-speech-features==0.6`
+  - `pip install tensorflow-cpu==2.10.0`
   - `pip install hyperpyyaml==1.2.2`
   - `pip install modelscope==1.10.0`
   - `pip install onnxruntime==1.16.3`
