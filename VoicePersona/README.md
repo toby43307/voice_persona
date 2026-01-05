@@ -1,6 +1,7 @@
 # VoicePersona
 
-本项目集成了两个前沿的开源项目：基于 NeRF 的说话人合成项目AD-NeRF(https://github.com/YudongGuo/AD-NeRF)，以及用于高质量、零样本语音克隆的 CosyVoice 项目(https://github.com/FunAudioLLM/CosyVoice/)。我们构建了一个统一、可复现的运行环境，并开发了一个精简流畅的 Web UI，整合了从数据处理、模型训练、声音克隆合成，以及演示的全过程。在整合过程中，我们用了大量的精力，统一环境依赖、规范路径和数据布局，并对两套代码进行适配，使其能够在同一个支持 CUDA 的平台上协同运行，从而让用户只需极少的环境配置，即可从示例视频/音频直接完成语音合成并渲染生成视频。
+本项目集成了两个前沿的开源项目：基于 NeRF 的说话人合成项目 [AD-NeRF](https://github.com/YudongGuo/AD-NeRF)，以及用于高质量、零样本语音克隆的 [CosyVoice](https://github.com/FunAudioLLM/CosyVoice)。我们构建了一个统一、可复现的运行环境，并开发了一个精简流畅的 Web UI，整合了从数据处理、模型训练、声音克隆合成，以及演示的全过程。在整合过程中，我们用了大量的精力，统一环境依赖、规范路径和数据布局，并对两套代码进行适配，使其能够在同一个支持 CUDA 的平台上协同运行，从而让用户只需极少的环境配置，即可从示例视频/音频直接完成语音合成并渲染生成视频。
+
 
 # VoicePersona Docker 配置
 
