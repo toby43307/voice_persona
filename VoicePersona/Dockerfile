@@ -2,7 +2,7 @@
 FROM mambaorg/micromamba:1.5.8 AS micromamba_stage
 
 # ---------- Stage 2: CUDA runtime ----------
-FROM nvidia/cuda:12.1.0-cudnn8-runtime-ubuntu22.04
+FROM pytorch/pytorch:2.3.1-cuda12.1-cudnn8-devel
 
 # System dependencies (minimal)
 RUN apt-get update && apt-get install -y \
@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y \
     curl \
     bzip2 \
     git \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy micromamba binary
@@ -35,10 +36,13 @@ RUN micromamba create -y \
 # Activate environment
 ENV PATH=/opt/conda/envs/voicepersona_env/bin:$PATH
 
+# sanity check that torch is visible inside env
+RUN micromamba run -n voicepersona_env python -c "import torch; import torchvision; import torchaudio; print(torch.__version__)"
+
 # Copy project files
 COPY . .
 
 # Expose Flask port (optional)
 EXPOSE 5001
 
-CMD ["python", "VoicePersona/app.py"]
+CMD ["/bin/bash"]

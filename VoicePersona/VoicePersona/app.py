@@ -179,7 +179,7 @@ def api_checkpoints():
     if not dataset:
         return jsonify({"error": "dataset is required"}), 400
     # Normalize and build absolute path
-    rel_path = dataset.replace('\\', '/').lstrip('/')
+    rel_path = dataset.replace('\\', '/').lstrip('/').lower()
     base_path = os.path.normpath(os.path.join(PROJECT_ROOT, rel_path))
     # Safety: ensure within project root
     if not base_path.startswith(PROJECT_ROOT):
@@ -340,7 +340,7 @@ def api_train():
     if not dataset_path:
         return jsonify({"status": "error", "message": "dataset_path is required"}), 400
 
-    rel_path = dataset_path.replace('\\', '/').lstrip('/')
+    rel_path = dataset_path.replace('\\', '/').lstrip('/').lower()
     base_path = os.path.normpath(os.path.join(PROJECT_ROOT, rel_path))
     if not base_path.startswith(PROJECT_ROOT):
         return jsonify({"status": "error", "message": "invalid dataset path"}), 400

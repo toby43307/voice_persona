@@ -7,6 +7,10 @@ channels:
 dependencies:
   - python=3.9
   - pip
+  - ninja
+  - cmake
+  - setuptools>=68
+  - wheel
 
   # Native libs
   - pyworld
@@ -28,9 +32,9 @@ dependencies:
 
   - pip:
       - --extra-index-url https://download.pytorch.org/whl/cu121
-      - torch==2.5.1+cu121
-      - torchvision==0.20.1+cu121
-      - torchaudio==2.5.1+cu121
+      - torch==2.3.1+cu121
+      - torchvision==0.18.1+cu121
+      - torchaudio==2.3.1+cu121
 
       # ML / AI
       - transformers
