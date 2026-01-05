@@ -1,6 +1,6 @@
 # VoicePersona
 
-本项目集成了两个前沿的开源项目：基于 NeRF 的说话人合成项目AD-NeRF（https://github.com/YudongGuo/AD-NeRF），以及用于高质量、零样本语音克隆的 CosyVoice 项目（https://github.com/FunAudioLLM/CosyVoice/）。我们构建了一个统一、可复现的运行环境，并开发了一个精简流畅的 Web UI，整合了从数据处理、模型训练、声音克隆合成，以及演示的全过程。在整合过程中，我们用了大量的精力，统一环境依赖、规范路径和数据布局，并对两套代码进行适配，使其能够在同一个支持 CUDA 的平台上协同运行，从而让用户只需极少的环境配置，即可从示例视频/音频直接完成语音合成并渲染生成视频。
+本项目集成了两个前沿的开源项目：基于 NeRF 的说话人合成项目AD-NeRF(https://github.com/YudongGuo/AD-NeRF)，以及用于高质量、零样本语音克隆的 CosyVoice 项目(https://github.com/FunAudioLLM/CosyVoice/)。我们构建了一个统一、可复现的运行环境，并开发了一个精简流畅的 Web UI，整合了从数据处理、模型训练、声音克隆合成，以及演示的全过程。在整合过程中，我们用了大量的精力，统一环境依赖、规范路径和数据布局，并对两套代码进行适配，使其能够在同一个支持 CUDA 的平台上协同运行，从而让用户只需极少的环境配置，即可从示例视频/音频直接完成语音合成并渲染生成视频。
 
 # VoicePersona Docker 配置
 
@@ -77,6 +77,8 @@ Dockerfile 使用一个定义在 `docker_environment_py39.yml` 中的最小化�
 - `docker run -it --gpus all -p 5001:5001 voice_persona_py39`
 
 - 然后在容器内，完成以下pytorch3d安装：
+
+```bash
     root@2984306f9a83:/VoicePersona# source /opt/conda/etc/profile.d/conda.sh
     root@2984306f9a83:/VoicePersona# conda activate voicepersona_env
     (voicepersona_env) root@2984306f9a83:/VoicePersona# python --version
@@ -84,6 +86,7 @@ Dockerfile 使用一个定义在 `docker_environment_py39.yml` 中的最小化�
     (voicepersona_env) root@2984306f9a83:/VoicePersona# python -c "import torch; print(torch.__version__, torch.cuda.is_available(), torch.version.cuda)"
     2.3.1+cu121 True 12.1
     (voicepersona_env) root@2984306f9a83:/VoicePersona# pip install "git+https://github.com/facebookresearch/pytorch3d.git"
+```
 
 **注意：** 根据您的环境或上游基础镜像的变动，Docker 镜像构建过程中可能不会自动安装某些列出的 Python 包。如果您在运行应用时遇到缺失包的错误，请在容器内手动安装依赖：
 ```
@@ -280,13 +283,15 @@ On machine with GPU support, run:
 - `docker run -it --gpus all -p 5001:5001 voice_persona_py39`
 
 - Then inside the container, complete the pytorch3d installation:
+```bash
     root@2984306f9a83:/VoicePersona# source /opt/conda/etc/profile.d/conda.sh
     root@2984306f9a83:/VoicePersona# conda activate voicepersona_env
     (voicepersona_env) root@2984306f9a83:/VoicePersona# python --version
     Python 3.9.23
     (voicepersona_env) root@2984306f9a83:/VoicePersona# python -c "import torch; print(torch.__version__, torch.cuda.is_available(), torch.version.cuda)"
     2.3.1+cu121 True 12.1
-    (voicepersona_env) root@2984306f9a83:/VoicePersona# pip install "git+https://github.com/NVIDIA/pytorch3d.git"
+    (voicepersona_env) root@2984306f9a83:/VoicePersona# pip install "git+https://github.com/facebookresearch/pytorch3d.git
+```
 
 **Note:** Some Python packages listed may not be installed automatically during Docker image creation, depending on your environment or changes in upstream images. If you encounter missing package errors when running the app, manually install them inside the container using:
 
