@@ -106,11 +106,14 @@ pip install -r requirements.txt
   - `pip install hydra-core==1.3.2`
   - `pip install wget==3.2`
   - `pip install natsort==8.4.0`
+  - `pip install inflect==7.0.0`
 
 或者直接运行：
-    pip install tensorflow-cpu==2.10.0 hyperpyyaml==1.2.3 modelscope==1.10.0 onnxruntime==1.16.3 omegaconf==2.3.0 conformer==0.3.2 hydra-core==1.3.2 wget==3.2 natsort==8.4.0 configargparse==1.7.1
+
+    pip install tensorflow-cpu==2.10.0 hyperpyyaml==1.2.3 modelscope==1.10.0 onnxruntime==1.16.3 omegaconf==2.3.0 conformer==0.3.2 hydra-core==1.3.2 wget==3.2 natsort==8.4.0 configargparse==1.7.1 inflect==7.0.0
 或：
-    pip install -i https://mirrors.aliyun.com/pypi/simple/ tensorflow-cpu==2.10.0 hyperpyyaml==1.2.3 modelscope==1.10.0 onnxruntime==1.16.3 omegaconf==2.3.0 conformer==0.3.2 hydra-core==1.3.2 wget==3.2 natsort==8.4.0 configargparse==1.7.1
+
+    pip install -i https://mirrors.aliyun.com/pypi/simple/ tensorflow-cpu==2.10.0 hyperpyyaml==1.2.3 modelscope==1.10.0 onnxruntime==1.16.3 omegaconf==2.3.0 conformer==0.3.2 hydra-core==1.3.2 wget==3.2 natsort==8.4.0 configargparse==1.7.1 inflect==7.0.0
 
 - 然后在容器内，启动应用程序：
 
@@ -313,14 +316,15 @@ or install the specific missing package as needed.
   - `pip install hydra-core==1.3.2`
   - `pip install wget==3.2`
   - `pip install natsort==8.4.0`
+  - `pip install inflect==7.0.0`
 
 Or directly run:
 
-    pip install tensorflow-cpu==2.10.0 hyperpyyaml==1.2.3 modelscope==1.10.0 onnxruntime==1.16.3 omegaconf==2.3.0 conformer==0.3.2 hydra-core==1.3.2 wget==3.2 natsort==8.4.0 configargparse==1.7.1
+    pip install tensorflow-cpu==2.10.0 hyperpyyaml==1.2.3 modelscope==1.10.0 onnxruntime==1.16.3 omegaconf==2.3.0 conformer==0.3.2 hydra-core==1.3.2 wget==3.2 natsort==8.4.0 configargparse==1.7.1 inflect==7.0.0
 
 or:
 
-    pip install -i https://mirrors.aliyun.com/pypi/simple/ tensorflow-cpu==2.10.0 hyperpyyaml==1.2.3 modelscope==1.10.0 onnxruntime==1.16.3 omegaconf==2.3.0 conformer==0.3.2 hydra-core==1.3.2 wget==3.2 natsort==8.4.0 configargparse==1.7.1
+    pip install -i https://mirrors.aliyun.com/pypi/simple/ tensorflow-cpu==2.10.0 hyperpyyaml==1.2.3 modelscope==1.10.0 onnxruntime==1.16.3 omegaconf==2.3.0 conformer==0.3.2 hydra-core==1.3.2 wget==3.2 natsort==8.4.0 configargparse==1.7.1 inflect==7.0.0
 
 
 then inside the container, start the app:

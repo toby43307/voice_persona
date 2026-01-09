@@ -1,3 +1,8 @@
+# VoicePersona
+
+本项目集成了两个前沿的开源项目：基于 NeRF 的说话人合成项目 [AD-NeRF](https://github.com/YudongGuo/AD-NeRF)，以及用于高质量、零样本语音克隆的 [CosyVoice](https://github.com/FunAudioLLM/CosyVoice)。我们构建了一个统一、可复现的运行环境，并开发了一个精简流畅的 Web UI，整合了从数据处理、模型训练、声音克隆合成，以及演示的全过程。在整合过程中，我们用了大量的精力，统一环境依赖、规范路径和数据布局，并对两套代码进行适配，使其能够在同一个支持 CUDA 的平台上协同运行，从而让用户只需极少的环境配置，即可从示例视频/音频直接完成语音合成并渲染生成视频。
+
+
 # VoicePersona Docker 配置
 
 本仓库提供了一个基于 Docker 的环境，用于在 Linux 容器（例如 Nvidia CUDA 基础镜像）中运行 VoicePersona 应用程序。**请勿**在 Docker 内部使用 Windows 的 conda 导出文件 (`environment_win_py39.yml`)，因为它包含操作系统特定的包和路径前缀。
@@ -5,7 +10,7 @@
 ## 准备工作
 
 - 已安装 Docker
-- NVIDIA 容器工具包（如果使用 GPU）
+- NVIDIA 容器工具包
 - Git
 
 ## 构建镜像
@@ -16,7 +21,7 @@ Dockerfile 使用一个定义在 `docker_environment_py39.yml` 中的最小化�
 
 1. 克隆仓库
    - `git clone https://github.com/toby43307/voice_persona`
-   - `cd voice_persona`
+   - `cd voice_persona/VoicePersona`
    
 2. 准备所需的数据/模型（将它们放置在您主机的当前工作副本中；它们将被挂载到容器中）
    - `data_util/face_tracking/3DMM/01_MorphableModel.mat` (≈229 MB)
@@ -65,12 +70,35 @@ Dockerfile 使用一个定义在 `docker_environment_py39.yml` 中的最小化�
   - 支持 CUDA 的 PyTorch (cu121)
   - 音频/视觉库：ffmpeg, opencv, libsndfile
   - 通过 pip 安装的语音/计算机视觉/Python 库
-- 额外添加的 pip 包:
-  - `openai`
-  - `resampy==0.4.3`
-  - `python-speech-features==0.6`
-  - `tensorflow-cpu==2.10.0`
-  - `pip install hyperpyyaml==1.2.2`
+
+## 运行容器
+
+在支持GPU上的机器上运行:
+
+- `docker run -it --gpus all -p 5001:5001 voice_persona_py39`
+
+- 然后在容器内，完成以下pytorch3d安装：
+
+```bash
+    root@2984306f9a83:/VoicePersona# source /opt/conda/etc/profile.d/conda.sh
+    root@2984306f9a83:/VoicePersona# conda activate voicepersona_env
+    (voicepersona_env) root@2984306f9a83:/VoicePersona# python --version
+    Python 3.9.23
+    (voicepersona_env) root@2984306f9a83:/VoicePersona# python -c "import torch; print(torch.__version__, torch.cuda.is_available(), torch.version.cuda)"
+    2.3.1+cu121 True 12.1
+    (voicepersona_env) root@2984306f9a83:/VoicePersona# pip install "git+https://github.com/facebookresearch/pytorch3d.git"
+```
+
+**注意：** 根据您的环境或上游基础镜像的变动，Docker 镜像构建过程中可能不会自动安装某些列出的 Python 包。如果您在运行应用时遇到缺失包的错误，请在容器内手动安装依赖：
+```
+pip install -r requirements.txt
+```
+或者根据需要单独安装缺失的特定包：
+  - `pip install openai`
+  - `pip install resampy==0.4.3`
+  - `pip install python-speech-features==0.6`
+  - `pip install tensorflow-cpu==2.10.0`
+  - `pip install hyperpyyaml==1.2.3`
   - `pip install modelscope==1.10.0`
   - `pip install onnxruntime==1.16.3`
   - `pip install omegaconf==2.3.0`
@@ -78,26 +106,18 @@ Dockerfile 使用一个定义在 `docker_environment_py39.yml` 中的最小化�
   - `pip install hydra-core==1.3.2`
   - `pip install wget==3.2`
   - `pip install natsort==8.4.0`
+  - `pip install inflect==7.0.0`
 
-**注意：** 根据您的环境或上游基础镜像的变动，Docker 镜像构建过程中可能不会自动安装某些列出的 Python 包。如果您在运行应用时遇到缺失包的错误，请在容器内手动安装依赖：
+或者直接运行：
 
-```
-pip install -r requirements.txt
-```
+    pip install tensorflow-cpu==2.10.0 hyperpyyaml==1.2.3 modelscope==1.10.0 onnxruntime==1.16.3 omegaconf==2.3.0 conformer==0.3.2 hydra-core==1.3.2 wget==3.2 natsort==8.4.0 configargparse==1.7.1 inflect==7.0.0
+或：
 
-或者根据需要单独安装缺失的特定包。
+    pip install -i https://mirrors.aliyun.com/pypi/simple/ tensorflow-cpu==2.10.0 hyperpyyaml==1.2.3 modelscope==1.10.0 onnxruntime==1.16.3 omegaconf==2.3.0 conformer==0.3.2 hydra-core==1.3.2 wget==3.2 natsort==8.4.0 configargparse==1.7.1 inflect==7.0.0
 
-## 运行容器
+- 然后在容器内，启动应用程序：
 
-在支持GPU上的机器上运行:
-
-- `docker run -it --rm --gpus all -p 5001:5001 voice_persona_py39 /bin/bash`
-- 没有GPU的话：
-- `docker run -it --rm -p 5001:5001 voice_persona_py39 /bin/bash`
-
-然后在容器内，启动应用程序：
-
-root@c7932666d1e5:/VoicePersona# python VoicePersona/app.py
+      (voicepersona_env) root@fec46a8303ef:/VoicePersona# python VoicePersona/app.py
 
 该应用程序对主机可用，请通过 `http://localhost:5001` 访问。
 
@@ -186,6 +206,12 @@ ffmpeg -i adnerf_obama.avi -vf "fps=25" output_folder/frame_%06d.png
 python evaluate_talkingface.py --real path/to/real_images --fake path/to/fake_images
 ```
 
+# VoicePersona
+
+This project integrates two cutting-edge open-source projects: AD-NeRF (https://github.com/YudongGuo/AD-NeRF
+), which performs NeRF-based talking-head synthesis, and CosyVoice (https://github.com/FunAudioLLM/CosyVoice/
+), which enables high-quality, zero-shot voice cloning. We built a unified, reproducible execution environment and developed a streamlined, user-friendly Web UI that brings together the entire pipeline—from data preprocessing and model training to voice cloning, speech synthesis, and interactive demonstrations.Throughout the integration process, substantial effort was devoted to consolidating environment dependencies, standardizing paths and data layouts, and adapting both codebases so that they can run cohesively on a single CUDA-enabled platform. As a result, users can go from sample video/audio to synthesized speech and rendered video with minimal environment setup.
+
 # VoicePersona Docker setup
 
 This repository provides a Docker-based environment for running the VoicePersona app on Linux containers (e.g., Nvidia CUDA base images). Do not use the Windows conda export (`environment_win_py39.yml`) inside Docker; it contains OS-specific packages and prefixes.
@@ -193,7 +219,7 @@ This repository provides a Docker-based environment for running the VoicePersona
 ## Prerequisites
 
 - Docker installed
-- NVIDIA Container Toolkit (if using GPU)
+- NVIDIA Container Toolkit
 - Git
 
 ## Build the image
@@ -204,7 +230,7 @@ Steps:
 
 1. Clone the repo
    - `git clone https://github.com/toby43307/voice_persona`
-   - `cd voice_persona`
+   - `cd voice_persona/VoicePersona`
    
 2. Prepare required data/models (place them in your working copy on the host; they will be mounted into the container)
    - `data_util/face_tracking/3DMM/01_MorphableModel.mat` (≈229 MB)
@@ -253,19 +279,23 @@ Notes:
   - CUDA-enabled PyTorch (cu121)
   - Audio/vision libs: ffmpeg, opencv, libsndfile
   - Speech/CV/python libs installed via pip
-- Additional pip packages added:
-  - `openai`
-  - `resampy==0.4.3`
-  - `python-speech-features==0.6`
-  - `tensorflow-cpu==2.10.0`
-  - `pip install hyperpyyaml==1.2.2`
-  - `pip install modelscope==1.10.0`
-  - `pip install onnxruntime==1.16.3`
-  - `pip install omegaconf==2.3.0`
-  - `pip install conformer==0.3.2`
-  - `pip install hydra-core==1.3.2`
-  - `pip install wget==3.2`
-  - `pip install natsort==8.4.0`
+
+## Run the container
+
+On machine with GPU support, run:
+
+- `docker run -it --gpus all -p 5001:5001 voice_persona_py39`
+
+- Then inside the container, complete the pytorch3d installation:
+```bash
+    root@2984306f9a83:/VoicePersona# source /opt/conda/etc/profile.d/conda.sh
+    root@2984306f9a83:/VoicePersona# conda activate voicepersona_env
+    (voicepersona_env) root@2984306f9a83:/VoicePersona# python --version
+    Python 3.9.23
+    (voicepersona_env) root@2984306f9a83:/VoicePersona# python -c "import torch; print(torch.__version__, torch.cuda.is_available(), torch.version.cuda)"
+    2.3.1+cu121 True 12.1
+    (voicepersona_env) root@2984306f9a83:/VoicePersona# pip install "git+https://github.com/facebookresearch/pytorch3d.git
+```
 
 **Note:** Some Python packages listed may not be installed automatically during Docker image creation, depending on your environment or changes in upstream images. If you encounter missing package errors when running the app, manually install them inside the container using:
 
@@ -274,20 +304,32 @@ pip install -r requirements.txt
 ```
 
 or install the specific missing package as needed.
+  - `pip install openai`
+  - `pip install resampy==0.4.3`
+  - `pip install python-speech-features==0.6`
+  - `pip install tensorflow-cpu==2.10.0`
+  - `pip install hyperpyyaml==1.2.3`
+  - `pip install modelscope==1.10.0`
+  - `pip install onnxruntime==1.16.3`
+  - `pip install omegaconf==2.3.0`
+  - `pip install conformer==0.3.2`
+  - `pip install hydra-core==1.3.2`
+  - `pip install wget==3.2`
+  - `pip install natsort==8.4.0`
+  - `pip install inflect==7.0.0`
 
-## Run the container
+Or directly run:
 
-On machine with GPU support, run:
+    pip install tensorflow-cpu==2.10.0 hyperpyyaml==1.2.3 modelscope==1.10.0 onnxruntime==1.16.3 omegaconf==2.3.0 conformer==0.3.2 hydra-core==1.3.2 wget==3.2 natsort==8.4.0 configargparse==1.7.1 inflect==7.0.0
 
-- `docker run -it --rm --gpus all -p 5001:5001 voice_persona_py39 /bin/bash`
+or:
 
-Or without GPU:
+    pip install -i https://mirrors.aliyun.com/pypi/simple/ tensorflow-cpu==2.10.0 hyperpyyaml==1.2.3 modelscope==1.10.0 onnxruntime==1.16.3 omegaconf==2.3.0 conformer==0.3.2 hydra-core==1.3.2 wget==3.2 natsort==8.4.0 configargparse==1.7.1 inflect==7.0.0
 
-- `docker run -it --rm -p 5001:5001 voice_persona_py39 /bin/bash`
 
 then inside the container, start the app:
 
-root@c7932666d1e5:/VoicePersona# python VoicePersona/app.py
+    (voicepersona_env) root@fec46a8303ef:/VoicePersona# python VoicePersona/app.py
 
 The app will be available to the host, visit it at `http://localhost:5001`.
 

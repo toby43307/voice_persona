@@ -37,7 +37,7 @@ dependencies:
       - torchaudio==2.3.1+cu121
 
       # ML / AI
-      - transformers
+      - transformers==4.37.2
       - diffusers
       - accelerate
       - lightning
