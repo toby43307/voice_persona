@@ -2,6 +2,7 @@ import sys
 import os
 from datetime import datetime
 from typing import List
+import json
 
 sys.path.append('third_party/Matcha-TTS')
 from cosyvoice.cli.cosyvoice import CosyVoice2
@@ -10,29 +11,18 @@ import torchaudio
 import torch
 
 
-# Map target speakers to their reference wav paths and sample text
-SPEAKER_PROFILE_MAP = {
-    'obama': {
-        'wav': './asset/obama_1st_15s.wav',
-        'sample_text': (
-            "Speak with you about the battle we're waging against an oil spill that is assaulting our shores and our citizens."
-            "On April twentieth, an explosion ripped through BP deep water horizon drilling rig, about forty miles off"
-        ),
-    },
-    'trump': {
-        'wav': './asset/trump_1st_15s.wav',
-        'sample_text': (
-            "Where they opened up a lot of different plants, energy plants, energy producing plants and they're doing well. "
-            "I give Germany a lot of credit for that. They've said this is a disaster, what's happening. They were going all green."
-        ),
-    },
-    'achu': {
-        'wav': './asset/test.wav',
-        'sample_text': (
-            "This is a test sample used for conditioning the voice cloning model for the target speaker."
-        ),
-    },
-}
+# Load speaker profiles from JSON instead of hardcoded map
+def load_speaker_profiles() -> dict:
+    script_dir = os.path.dirname(__file__)
+    profiles_path = os.path.join(script_dir, 'speaker_profiles.json')
+    try:
+        with open(profiles_path, 'r', encoding='utf-8') as f:
+            data = json.load(f) or {}
+        # Normalize keys to lowercase for lookup
+        return { (k or '').lower(): v for k, v in data.items() }
+    except Exception as e:
+        print(f"Failed to read speaker_profiles.json: {e}")
+        return {}
 
 
 def ensure_output_dir(path: str) -> None:
@@ -46,10 +36,28 @@ def concat_chunks(chunks: List[torch.Tensor]) -> torch.Tensor:
     return torch.cat(chunks, dim=1)
 
 
+def resolve_project_relative(path: str) -> str:
+    """Resolve project-relative paths like './asset/xxx.wav' to absolute filesystem path."""
+    if not path:
+        return ''
+    norm = path.replace('\\', '/').strip()
+    # If path is already absolute, return as-is
+    if os.path.isabs(norm):
+        return norm
+    # Resolve relative to project root (script directory's parent)
+    script_dir = os.path.dirname(__file__)
+    project_root = script_dir  # speaker_profiles.json uses paths relative to project root
+    return os.path.normpath(os.path.join(project_root, norm))
+
+
 def main():
     # Read input text and target speaker from command line args
+    profiles = load_speaker_profiles()
+
+    # Help message with available speakers (from JSON)
+    available = ', '.join(sorted({k.capitalize() for k in profiles.keys()})) if profiles else 'N/A'
+
     if len(sys.argv) < 3:
-        available = ', '.join(sorted({k.capitalize() for k in SPEAKER_PROFILE_MAP.keys()}))
         print(
             "Usage: python tts_clone_speaker_based_on_speech_sample.py \"<target_speaker>\" <text to speak>\n"
             f"       target_speaker one of: {available}"
@@ -59,20 +67,24 @@ def main():
     target_speaker = sys.argv[1].strip().lower()
     sentence_to_say = sys.argv[2]
 
-    profile = SPEAKER_PROFILE_MAP.get(target_speaker)
+    profile = profiles.get(target_speaker)
     if not profile:
-        available = ', '.join(sorted({k.capitalize() for k in SPEAKER_PROFILE_MAP.keys()}))
-        print(f"Unknown target_speaker '{sys.argv[2]}'. Available: {available}")
+        print(f"Unknown target_speaker '{sys.argv[1]}'. Available: {available}")
         sys.exit(1)
 
-    wav_path = profile.get('wav')
-    if not wav_path or not os.path.isfile(wav_path):
-        print(f"Reference wav not found for speaker '{sys.argv[2]}': {wav_path}")
+    wav_rel = (profile.get('wav') or '').strip()
+    sample_text = (profile.get('sample_text') or '').strip()
+
+    wav_path = resolve_project_relative(wav_rel)
+    if not wav_rel:
+        print(f"No 'wav' path configured for speaker '{sys.argv[1]}'.")
+        sys.exit(1)
+    if not os.path.isfile(wav_path):
+        print(f"Reference wav not found for speaker '{sys.argv[1]}': {wav_rel} -> {wav_path}")
         sys.exit(1)
 
-    sentence_to_learn = profile.get('sample_text', '').strip()
-    if not sentence_to_learn:
-        print(f"No sample_text configured for speaker '{sys.argv[2]}'.")
+    if not sample_text:
+        print(f"No sample_text configured for speaker '{sys.argv[1]}'.")
         sys.exit(1)
 
     # Prepare output folder and filenames
@@ -92,7 +104,7 @@ def main():
     audio_chunks: List[torch.Tensor] = []
     for _, result in enumerate(cosyvoice.inference_zero_shot(
         sentence_to_say,
-        sentence_to_learn,
+        sample_text,
         prompt_speech_16k,
         stream=False
     )):

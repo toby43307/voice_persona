@@ -265,7 +265,7 @@ def api_generate_video():
     if not npy_path:
         return jsonify({"status": "error", "message": "npy_path is required"}), 400
 
-    sp_cap = speaker.lower().capitalize()
+    sp_cap = speaker.lower()
     dataset_rel = f"dataset/{sp_cap}"
 
     def resolve_fs_path(path: str) -> str:
